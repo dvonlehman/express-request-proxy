@@ -18,7 +18,7 @@
     "api",
     "proxy"
   ],
-  "author": "David Von Lehman",
+  "author": "David Von Lehman (https://github.com/dvonlehman)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/4front/express-api-proxy/issues"

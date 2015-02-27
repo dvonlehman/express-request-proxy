@@ -1,9 +1,10 @@
 var assert = require('assert');
 var _ = require('lodash');
+var interpolater = require('../lib/interpolate')
 
 describe('detokenize()', function() {
   before(function() {
-    this.interpolate = require('../lib/interpolate')({
+    this.interpolate = interpolater({
       leftDelimiter: '${',
       rightDelimiter: '}'
     })
@@ -78,5 +79,23 @@ describe('detokenize()', function() {
     }
 
     assert.ok(false);
+  });
+
+  it('supports other delimiters', function() {
+    var interpolate = interpolater({
+      leftDelimiter: '@@',
+      rightDelimiter: '@@'
+    })
+
+    var values = {
+      GUEST_NAME: 'Bob',
+      CITY: 'Seattle'
+    };
+
+    var str = "hello @@GUEST_NAME@@, welcome to @@CITY@@";
+
+    assert.equal('hello Bob, welcome to Seattle', interpolate(str, function(key) {
+      return values[key];
+    }));
   });
 });

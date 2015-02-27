@@ -5,5 +5,7 @@ node_js:
 matrix:
   allow_failures:
   fast_finish: true
+services:
+  - redis-server
 script: "npm run-script test-travis"
 after_script: "npm install coveralls@2.10.0 && cat ./coverage/lcov.info | coveralls"

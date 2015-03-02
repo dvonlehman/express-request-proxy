@@ -6,11 +6,19 @@ var _ = require('lodash');
 
 module.exports.beforeEach = function() {
   var self = this;
+  this.apiLatency = 0;
 
   this.remoteApi = express();
   this.remoteApi.all('/api/:apikey?', bodyParser.json(), function(req, res) {
-    // Just echo the query back in the response
-    res.json(_.pick(req, 'query', 'path', 'params', 'headers', 'method', 'body'));
+    setTimeout(function() {
+      // Just echo the query back in the response
+      res.set('Content-Type', 'application/json');
+      res.json(_.pick(req, 'query', 'path', 'params', 'headers', 'method', 'body'));
+    }, self.apiLatency);
+  });
+
+  this.remoteApi.all('/error', function(req, res, next) {
+    res.status(400).send("error message");
   });
 
   var apiPort = 5998;
@@ -19,9 +27,10 @@ module.exports.beforeEach = function() {
 
   this.environmentVariables = {};
   this.proxyOptions = {
-    envVariableLookup: function(name) {
+    envVariableFn: function(req, name) {
       return self.environmentVariables[name];
-    }
+    },
+    timeout: 3000
   };
 
   this.user = {};

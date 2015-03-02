@@ -14,26 +14,25 @@ describe('response transforms', function() {
   beforeEach(function() {
     this.remoteApi.get('/test', function(req, res) {
       // Just echo the query back in the response
+      res.set('x-custom', 'custom header');
+      res.set('content-type', 'text/plain');
       res.send('1234');
     });
 
-    this.proxyOptions.transforms = [
-      function() {
-        return through2(function (chunk, enc, cb) { 
-          this.push(chunk + '<<EOF>>');
-          cb();
-        });
-      }
-    ];
+    this.proxyOptions.transforms = [appenderTransform('<<EOF>>')];
   });
 
   it('performs transform', function(done) {      
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
       .expect(200)
+      .expect('x-custom', 'custom header')
       .expect(function(res) {
         assert.equal(res.text, '1234<<EOF>>');
       })
-      .end(done);
+      .end(function(err, res) {
+        console.log("callback");
+        done(err);
+      });
   });
 
   it('transformed response is stored in cache', function(done) {
@@ -59,18 +58,35 @@ describe('response transforms', function() {
   });
 
   it('works with multiple transforms', function(done) {
-    this.proxyOptions.transforms.push(function() {
-      return through2(function(chunk, enc, cb) { 
-        this.push(chunk + '<<EOF2>>');
-        cb();
-      });
-    });
+    this.proxyOptions.transforms.push(appenderTransform('<<EOF2>>'));
 
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent('http://localhost:5998/test'))
+    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
       .expect(200)
       .expect(function(res) {
         assert.equal(res.text, '1234<<EOF>><<EOF2>>');
       })
       .end(done);
   });
+
+  it('allows transform to override content-type', function(done) {
+    this.proxyOptions.transforms = [appenderTransform('XYZ', 'text/html')];
+    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
+      .expect(200)
+      .expect('Content-Type', /^text\/html/)
+      .expect(function(res) {
+        assert.equal(res.text, '1234XYZ');
+      })
+      .end(done);
+  });
+
+  function appenderTransform(appendText, contentType) {
+    var fn = function() {
+      return through2(function(chunk, enc, cb) { 
+        this.push(chunk + appendText);
+        cb();
+      });
+    };
+    fn.contentType = contentType;
+    return fn;
+  }
 });

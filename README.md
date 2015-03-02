@@ -85,9 +85,9 @@ __`cacheHttpHeader`__
 
 Name of the http header returned in the proxy response with the value `"hit"` or `"miss"`. Defaults to `"Express-Api-Proxy-Cache"`.
 
-__`envVariableLookup`__
+__`envVariableFn`__
 
-In the event that you have custom logic for reading an environment variable (like when using an alternative implementation to `process.env`), you can pass a function that accepts two parameters: `req` and `key` that returns the value. If omitted, `process.env[key]` is used.
+Function for providing custom logic to return the value of an environment variable. Useful for reading values from alternative stores to `process.env`. Function takes two arguments: `req` and `key`. If omitted, `process.env[key]` is used by default.
 
 __`endpoints`__
 

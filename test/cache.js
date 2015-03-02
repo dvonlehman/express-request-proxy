@@ -18,11 +18,13 @@ describe('proxy cache', function() {
     var originUrl = this.apiUrl + '/api/' + new Date().getTime();
     // var cache = new MemoryCache();
     var cache = redis.createClient();
+    this.proxyOptions.cacheMaxAge = 100;
     this.proxyOptions.cache = cache;
 
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
       .expect(200)
       .expect('Content-Type', /application\/json/)
+      .expect('Cache-Control', 'max-age=100')
       .expect('Express-Api-Proxy-Cache', 'miss')
       .end(function(err, res) {
         cache.exists(originUrl, function(err, exists) {
@@ -66,5 +68,51 @@ describe('proxy cache', function() {
           done();
         })
       });
+  });
+
+  it('overrides Cache-Control from the origin API', function(done) {
+    this.remoteApi.get('/cache', function(req, res) {
+      res.set('Cache-Control', 'max-age=20');
+      res.json({});
+    });
+
+    this.proxyOptions.cache = redis.createClient();
+    this.proxyOptions.cacheMaxAge = 200;
+    
+    var originUrl = this.apiUrl + '/cache';
+    this.proxyOptions.cache.del(originUrl);
+
+    supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
+      .expect(200)
+      .expect('Cache-Control', 'max-age=200')
+      .end(done);
+  });
+
+  it('removes cache related headers', function(done) {
+    this.remoteApi.get('/cache', function(req, res) {
+      res.set('last-modified', new Date().toUTCString());
+      res.set('expires', new Date().toUTCString());
+      res.set('etag', '345345345345');
+      res.set('x-custom', 'custom-header')
+
+      res.json({});
+    });
+
+    this.proxyOptions.cache = redis.createClient();
+    this.proxyOptions.cacheMaxAge = 200;
+    
+    var originUrl = this.apiUrl + '/cache';
+    this.proxyOptions.cache.del(originUrl);
+
+    supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+      .expect('x-custom', 'custom-header')
+      .expect(function(res) {
+        assert.ok(_.isUndefined(res.headers['last-modified']));
+        assert.ok(_.isUndefined(res.headers['expires']));
+        assert.ok(_.isUndefined(res.headers['etag']));
+      })
+      .end(done);
   });
 });

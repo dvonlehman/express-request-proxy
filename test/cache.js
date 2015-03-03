@@ -28,9 +28,11 @@ describe('proxy cache', function() {
       .expect('Express-Api-Proxy-Cache', 'miss')
       .end(function(err, res) {
         cache.exists(originUrl, function(err, exists) {
-          if (err) return done(err);
           assert.ok(exists);
-          done();
+          cache.exists(originUrl + '__headers', function(err, exists) {
+            assert.ok(exists);
+            done();
+          })
         });
       });
   });
@@ -41,7 +43,9 @@ describe('proxy cache', function() {
 
     var cache = redis.createClient();
     this.proxyOptions.cache = cache;
+
     cache.setex(originUrl, 1000, JSON.stringify(apiResponse));
+    cache.setex(originUrl + '__headers', 1000, JSON.stringify({'content-type':'application/json'}));
 
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
       .set('Accept', 'application/json')
@@ -114,5 +118,35 @@ describe('proxy cache', function() {
         assert.ok(_.isUndefined(res.headers['etag']));
       })
       .end(done);
+  });
+
+  it('original headers preserved when request comes from cache', function(done) {
+    var self = this;
+
+    this.remoteApi.get('/cache', function(req, res) {
+      res.set('X-Custom-Header', 'foo');
+      res.set('set-cookie', 'foo=1');
+      res.json({});
+    });
+
+    this.proxyOptions.cache = redis.createClient();
+    
+    var originUrl = this.apiUrl + '/cache';
+    this.proxyOptions.cache.del(originUrl);
+    var proxyUrl = '/proxy?url=' + encodeURIComponent(originUrl);
+
+    supertest(this.server).get(proxyUrl)
+      .expect(200)
+      .expect('Express-Api-Proxy-Cache', 'miss')
+      .end(function(err, res) {
+        supertest(self.server).get(proxyUrl)
+          .expect('Express-Api-Proxy-Cache', 'hit')
+          .expect('Content-Type', /application\/json/)
+          .expect('X-Custom-Header', 'foo')
+          .expect(function(res) {
+            assert.ok(_.isUndefined(res.headers['set-cookie']))
+          })
+          .end(done);
+      });
   });
 });

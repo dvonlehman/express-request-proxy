@@ -17,11 +17,14 @@ require('redis-streams');
 
 app.all('/proxy', apiProxy({
 	cache: redis.createClient(),
-	// This is authenticated with the app, not the remote API
 	ensureAuthenticated: false, 
 	endpoints: [
 		{
-			pattern: '/secure',
+			pattern: /\public/,
+			maxCacheAge: 60 * 10 // cache responses for 10 minutes
+		},
+		{
+			pattern: /\/secure/,
 			ensureAuthenticated: true,
 			cache: false
 		}
@@ -34,16 +37,14 @@ app.all('/proxy', apiProxy({
 ```js
 
 var params = {
-	access_key: '${SOMEAPI_ACCESS_KEY}',
-	access_secret: '${SOMEAPI_ACCESS_SECRET}'
+	api_key: '${SOMEAPI_API_KEY}',
+	api_secret: '${SOMEAPI_API_SECRET}'
 };
 
-var apiUrl = 'http://someapi.com/api/secure?' + $.param(params);
-
 $.ajax({
-	url: '/proxy?url=' + encodeURIComponent(apiUrl),
-	headers: {
-		Accept: 'application/json'
+	url: '/proxy',
+	data: {
+		url: 'http://someapi.com/api/secure?' + $.param(params);
 	},
 	statusCode: {
 	   	200: function(data) {
@@ -59,7 +60,7 @@ $.ajax({
 ### Options
 __`cache`__
 
-Cache object that conforms to the [node_redis](https://www.npmjs.com/package/redis) API. See [Cache section](#caching) below for more details.
+Cache object that conforms to the [node_redis](https://www.npmjs.com/package/redis) API. Can set to `false` at an endpoint level to explicitly disable caching for certain APIs. See [Cache section](#caching) below for more details.
 
 __`cacheMaxAge`__
 
@@ -75,7 +76,7 @@ The symbol representing the end of an environment variable token. Defaults to `}
 
 __`ensureAuthenticated`__
 
-If true, requires that `req.ext.isAuthenticated` is true. Otherwise a 401 error status is immedietely returned. Note that this is not referring to authentication with the remote app, but rather the Express app where the proxy route is mounted. Generally middleware earlier in the request lifecycle would be responsible for setting `req.ext.isAuthenticated`. The `ext` is shorthand for extended; it's a simple convention to avoid stuffing a bunch of extra stuff directly onto the built-in Express request object.
+Ensure that there is a valid logged in user in order to invoke the proxy. See the [Ensure Authenticated](#ensure-authenticated) section below for details.
 
 __`userAgent`__
 
@@ -104,14 +105,133 @@ endpoints: [
 
 ### Environment Variables
 
+In order to keep sensitive keys out of client JavaScript, the API proxy supports replacing environment variables in the URL, HTTP headers, and the JSON body of a POST or PUT request. Environment variables that are blank or undefined will result in a 400 (Bad Request) HTTP response.
+
+#### URL
+
+```js
+$.ajax({
+	url: '/proxy',
+	data: {
+		url: 'https://someapi.com/api/endpoint?api_key=${SOME_API_API_KEY}'
+	}
+});
+```
+
+#### HTTP header
+For [HTTP Basic authentication](http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side), the value of the `SOME_API_BASIC_AUTH_TOKEN` environment variable would be "username:password" Base64 encoded. The `X-Authorization` header is used to avoid colliding with a `Authorization` header required to invoke the `/proxy` URL. The proxy will strip off the `X-` prefix when invoking the remote API.
+
+```js
+$.ajax({
+	url: '/proxy',
+	data: {
+		url: 'https://someapi.com/api/endpoint'
+	},
+	headers: {
+		'X-Authorization': 'Basic ${SOME_API_BASIC_AUTH_TOKEN}'
+	}
+});
+```
+
+#### POST or PUT body
+
+```js
+$.ajax({
+	url: '/proxy?url=' + encodeURIComponent('https://someapi.com/api/endpoint'),
+	type: 'POST',
+	data: {
+		api_key: '${SOME_API_API_KEY}',
+		params: {}
+	}
+});
+```
+
+#### User Variables
+For any environment variable with the prefix `USER_`, the proxy will replace it with a matching property on the `req.user` object. It does so by stripping off the `USER_` prefix, then converting the remainder from underscore case to camel case. For example the variable `USER_ACCESS_TOKEN` would get substituted by `req.user.accessToken`. If there is `req.user` or `req.user.accessToken` is undefined, a 400 response is returned.
+
+#### Custom Environment Variable Store
+By default the proxy looks up environment variables using `process.env[key]`, but in some cases it is desirable to provide a custom environment variable implementation. A `envVariableFn` option can be provided that accepts the `req` and `key` to perform custom logic:
+
+```js
+options: {
+	envVariableFn: function(req, key) {
+		return ...;
+	}
+}
+```
+
 ### Caching 
 
-If using node_redis itself, performance can be further optimized by requiring the [redis-streams](https://www.npmjs.com/package/redis-streams) package which adds two functions to the `RedisClient` type: `readStream` and `writeThrough`. These enhancements allow piping the remote API response directly to the http response, avoiding the overhead of buffering the entire API response in memory. 
+For APIs whose data does not frequently change, it is often desirable to cache responses at the proxy level. This avoids repeated network round-trip latency and can skirt rate limits imposed by the API provider. Caching can be set as a global option, but more commonly you'll want to control it for each individual endpoint. 
 
+The object provided to the `cache` option is expected to implement a subset of the [node_redis](https://github.com/mranney/node_redis) interface, specifically the [get](http://redis.io/commands/get), [set](http://redis.io/commands/set), [setex](http://redis.io/commands/setex), [exists](http://redis.io/commands/exists), [del](http://redis.io/commands/del), and [ttl](http://redis.io/commands/ttl) commands. The node_redis package can be used directly, other cache stores require a wrapper to adapt the redis interface.
 
-### Authorization
+As an optimization, two additional functions, `readStream` and `writeThrough` can be implemented on the cache object to allow directly piping the API responses into and out of the cache. This avoids buffering the entire API response in memory. For node_redis, the [redis-streams](https://www.npmjs.com/package/redis-streams) package augments the `RedisClient` with these two functions. Simply add the following line to your module before the proxy middleware is executed:
+
+```js
+var redis = require('redis');
+require('redis-streams')
+
+app.all('/proxy', apiProxy({
+	cache: redis.createClient(),
+	endpoints: [
+		pattern: /blog\/posts/,
+		maxCacheAge: 60 * 5 // 5 minutes
+	]
+});
+```
+
+#### HTTP Headers
+If an API response is served from the cache, the `max-age` header will be set to the remaining TTL of the cached object. The proxy cache trumps any HTTP headers such as `Last-Modified`, `Expires`, or `ETag`, so these get discarded. Effectively the proxy takes over the caching behavior from the origin for the duration that it exists there.
+
+### Ensure Authenticated
+
+It's possible restrict proxy calls to authenticated users via the `ensureAuthenticated` option property which can be specified at the top level, or on a specific object in the `endpoints` array. 
+
+```js
+app.all('/proxy', apiProxy({
+	endpoints: [
+		{
+			pattern: /\/secure/,
+			ensureAuthenticated: true
+		}
+	]
+});
+```
+
+The proxy does not perform authentication itself, that task is delegated to other middleware that executes earlier in the request pipeline which sets the property `req.ext.isAuthenticated`. If the `ensureAuthenticated` is `true` and `req.ext.isAuthenticated !== true`, a 401 (Unauthorized) HTTP response is returned.
+
+Note that this is different than authentication that might be enforced by the remote API itself. That's handled by passing environment variables as discussed above.
+
 
 ### Transforms
+
+The proxy supports transforming the API response before piping it back to the caller. Transforms are functions which return a Node.js [transform stream](http://nodejs.org/api/stream.html#stream_class_stream_transform). The [through2](https://github.com/rvagg/through2) package provides a lightweight wrapper that makes transforms easier to implement.
+
+Here's a trivial transform function that simply appends some text
+
+```js
+module.exports = fn = function(options) {
+	return through2(function(chunk, enc, cb) {
+		this.push(chunk);
+		cb();
+	}, function(cb) {
+		this.push(options.appendText);
+		cb();
+	});
+};
+```
+
+If the transform needs to change the `Content-Type` of the response, a `contentType` property can be declared on the transform function that the proxy will recognize and set the header accordingly. 
+
+```js
+module.exports = transform = function(options) {
+	return through2(...);
+};
+
+transform.contentType = 'application/json';
+```
+See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example.
 
 
 [npm-image]: https://img.shields.io/npm/v/express-api-proxy.svg?style=flat

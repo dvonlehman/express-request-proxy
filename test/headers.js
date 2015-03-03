@@ -14,13 +14,6 @@ describe('http headers', function() {
       .end(done);
   });
 
-  it('returns error message', function(done) {
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/error'))
-      .expect(400)
-      .expect(/error message/)
-      .end(done);
-  });
-
   it('uses correct user-agent', function(done) {
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/api'))
       .expect(200)

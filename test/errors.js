@@ -16,6 +16,13 @@ describe('timeout', function() {
     this.proxyOptions.timeout = 20;
   });
 
+  it('returns error message', function(done) {
+    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/error'))
+      .expect(400)
+      .expect(/error message/)
+      .end(done);
+  });
+
   it('api timeout returns 408', function(done) {
     supertest(this.server)
       .get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/api'))

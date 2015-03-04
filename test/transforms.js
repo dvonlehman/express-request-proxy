@@ -5,7 +5,7 @@ var redis = require('redis');
 var through2 = require('through2');
 var setup = require('./setup');
 
-require('redis-streams');
+require('redis-streams')(redis);
 
 describe('response transforms', function() {
   beforeEach(setup.beforeEach);
@@ -19,13 +19,14 @@ describe('response transforms', function() {
       res.send('1234');
     });
 
-    this.proxyOptions.transforms = [appenderTransform('<<EOF>>')];
+    this.proxyOptions.transforms = [appenderTransform('<<EOF>>', 'text/html')];
   });
 
   it('performs transform', function(done) {      
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
       .expect(200)
       .expect('x-custom', 'custom header')
+      .expect('Content-Type', /^text\/html/)
       .expect(function(res) {
         assert.equal(res.text, '1234<<EOF>>');
       })
@@ -36,6 +37,8 @@ describe('response transforms', function() {
   });
 
   it('transformed response is stored in cache', function(done) {
+    var self = this;
+
     var cache = redis.createClient();
     this.proxyOptions.cache = cache;
     var apiUrl = this.apiUrl + '/test';
@@ -49,11 +52,11 @@ describe('response transforms', function() {
       .end(function(err, res) {
         if (err) return done(err);
 
-        cache.get(apiUrl, function(err, val) {
-          if (err) return done(err);
-          assert.equal(val, '1234<<EOF>>');
-          done();
-        });
+        supertest(self.server).get('/proxy?url=' + encodeURIComponent(apiUrl))
+          .expect(200)
+          .expect('Content-Type', /^text\/html/)
+          .expect('1234<<EOF>>')
+          .end(done);
       });
   });
 
@@ -80,12 +83,11 @@ describe('response transforms', function() {
   });
 
   function appenderTransform(appendText, contentType) {
-    var fn = function() {
-      return through2(function(chunk, enc, cb) { 
-        this.push(chunk + appendText);
-        cb();
-      });
-    };
+    var fn = through2(function(chunk, enc, cb) { 
+      this.push(chunk + appendText);
+      cb();
+    });
+
     fn.contentType = contentType;
     return fn;
   }

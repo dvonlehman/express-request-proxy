@@ -9,11 +9,11 @@ High performance streaming API reverse proxy for [Express](http://expressjs.com)
 
 ## Usage
 
-```js
+~~~js
 var redis = require('redis');
 var apiProxy = require('express-api-proxy');
 
-require('redis-streams');
+require('redis-streams')(redis);
 
 app.all('/proxy', apiProxy({
 	cache: redis.createClient(),
@@ -30,7 +30,7 @@ app.all('/proxy', apiProxy({
 		}
 	]
 });
-```
+~~~
 
 #### Client Code
 
@@ -94,14 +94,14 @@ __`endpoints`__
 
 Allows overriding any of the above options for a specific remote API endpoint based on a RegExp pattern match.
 
-```
+~~~js
 endpoints: [
 	{
   		pattern: /api.instagram.com/,
   		cacheMaxAge: 4000
   	}
 ]
-```
+~~~
 
 ### Environment Variables
 
@@ -109,19 +109,19 @@ In order to keep sensitive keys out of client JavaScript, the API proxy supports
 
 #### URL
 
-```js
+~~~js
 $.ajax({
 	url: '/proxy',
 	data: {
 		url: 'https://someapi.com/api/endpoint?api_key=${SOME_API_API_KEY}'
 	}
 });
-```
+~~~
 
 #### HTTP header
 For [HTTP Basic authentication](http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side), the value of the `SOME_API_BASIC_AUTH_TOKEN` environment variable would be "username:password" Base64 encoded. The `X-Authorization` header is used to avoid colliding with a `Authorization` header required to invoke the `/proxy` URL. The proxy will strip off the `X-` prefix when invoking the remote API.
 
-```js
+~~~js
 $.ajax({
 	url: '/proxy',
 	data: {
@@ -131,7 +131,7 @@ $.ajax({
 		'X-Authorization': 'Basic ${SOME_API_BASIC_AUTH_TOKEN}'
 	}
 });
-```
+~~~
 
 #### POST or PUT body
 
@@ -164,13 +164,16 @@ options: {
 
 For APIs whose data does not frequently change, it is often desirable to cache responses at the proxy level. This avoids repeated network round-trip latency and can skirt rate limits imposed by the API provider. Caching can be set as a global option, but more commonly you'll want to control it for each individual endpoint. 
 
-The object provided to the `cache` option is expected to implement a subset of the [node_redis](https://github.com/mranney/node_redis) interface, specifically the [get](http://redis.io/commands/get), [set](http://redis.io/commands/set), [setex](http://redis.io/commands/setex), [exists](http://redis.io/commands/exists), [del](http://redis.io/commands/del), and [ttl](http://redis.io/commands/ttl) commands. The node_redis package can be used directly, other cache stores require a wrapper to adapt the redis interface.
+The object provided to the `cache` option is expected to implement a subset of the [node_redis](https://github.com/mranney/node_redis) interface, specifically the [get](http://redis.io/commands/get), [set](http://redis.io/commands/set), [setex](http://redis.io/commands/setex), [exists](http://redis.io/commands/exists), [del](http://redis.io/commands/del), and [ttl](http://redis.io/commands/ttl) commands. The node_redis package can be used directly, other cache stores require a wrapper module that adapts to the redis interface.
 
-As an optimization, two additional functions, `readStream` and `writeThrough` can be implemented on the cache object to allow directly piping the API responses into and out of the cache. This avoids buffering the entire API response in memory. For node_redis, the [redis-streams](https://www.npmjs.com/package/redis-streams) package augments the `RedisClient` with these two functions. Simply add the following line to your module before the proxy middleware is executed:
+As an optimization, two additional functions, `readStream` and `writeThrough` can be implemented on the cache object to allow direct piping of the API responses into and out of the cache. This avoids buffering the entire API response in memory. For node_redis, the [redis-streams](https://www.npmjs.com/package/redis-streams) package augments the `RedisClient` with these two functions. Simply add the following line to your module before the proxy middleware is executed:
 
 ```js
 var redis = require('redis');
-require('redis-streams')
+
+require('redis-streams')(redis);
+// After line above, calls to redis.createClient will return enhanced
+// object with readStream and writeThrough functions.
 
 app.all('/proxy', apiProxy({
 	cache: redis.createClient(),
@@ -225,12 +228,13 @@ module.exports = fn = function(options) {
 If the transform needs to change the `Content-Type` of the response, a `contentType` property can be declared on the transform function that the proxy will recognize and set the header accordingly. 
 
 ```js
-module.exports = transform = function(options) {
-	return through2(...);
+module.exports = function(options) {
+	var transform = through2(...);
+	transform.contentType = 'application/json';
+	return transform;
 };
-
-transform.contentType = 'application/json';
 ```
+
 See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example.
 
 

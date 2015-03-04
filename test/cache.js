@@ -7,7 +7,7 @@ var _ = require('lodash');
 var redis = require('redis');
 var setup = require('./setup');
 
-require('redis-streams');
+require('redis-streams')(redis);
 
 describe('proxy cache', function() {
   beforeEach(setup.beforeEach);
@@ -97,7 +97,6 @@ describe('proxy cache', function() {
       res.set('last-modified', new Date().toUTCString());
       res.set('expires', new Date().toUTCString());
       res.set('etag', '345345345345');
-      res.set('x-custom', 'custom-header')
 
       res.json({});
     });
@@ -111,7 +110,6 @@ describe('proxy cache', function() {
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
       .expect(200)
       .expect('Content-Type', /application\/json/)
-      .expect('x-custom', 'custom-header')
       .expect(function(res) {
         assert.ok(_.isUndefined(res.headers['last-modified']));
         assert.ok(_.isUndefined(res.headers['expires']));
@@ -120,13 +118,12 @@ describe('proxy cache', function() {
       .end(done);
   });
 
-  it('original headers preserved when request comes from cache', function(done) {
+  it('original content-type preserved when request comes from cache', function(done) {
     var self = this;
 
     this.remoteApi.get('/cache', function(req, res) {
-      res.set('X-Custom-Header', 'foo');
-      res.set('set-cookie', 'foo=1');
-      res.json({});
+      res.set('content-type', 'some/custom-type')
+      res.send('adsfadsf');
     });
 
     this.proxyOptions.cache = redis.createClient();
@@ -141,8 +138,7 @@ describe('proxy cache', function() {
       .end(function(err, res) {
         supertest(self.server).get(proxyUrl)
           .expect('Express-Api-Proxy-Cache', 'hit')
-          .expect('Content-Type', /application\/json/)
-          .expect('X-Custom-Header', 'foo')
+          .expect('Content-Type', /^some\/custom-type/)
           .expect(function(res) {
             assert.ok(_.isUndefined(res.headers['set-cookie']))
           })

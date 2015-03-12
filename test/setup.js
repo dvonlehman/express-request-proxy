@@ -1,19 +1,25 @@
 var express = require('express');
 var http = require('http');
 var bodyParser = require('body-parser');
+var debug = require('debug')('express-api-proxy');
 var proxy = require('..');
 var _ = require('lodash');
 
 module.exports.beforeEach = function() {
   var self = this;
   this.apiLatency = 0;
+  this.apiResponse = null;
 
   this.remoteApi = express();
   this.remoteApi.all('/api/:apikey?', bodyParser.json(), function(req, res) {
     setTimeout(function() {
       // Just echo the query back in the response
       res.set('Content-Type', 'application/json');
-      res.json(_.pick(req, 'query', 'path', 'params', 'headers', 'method', 'body'));
+
+      if (self.apiResponse)
+        res.json(self.apiResponse);
+      else
+        res.json(_.pick(req, 'query', 'path', 'params', 'headers', 'method', 'body'));
     }, self.apiLatency);
   });
 

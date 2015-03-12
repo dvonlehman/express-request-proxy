@@ -5,31 +5,38 @@ var querystring = require('querystring');
 var supertest = require('supertest');
 var _ = require('lodash');
 var redis = require('redis');
+var debug = require('debug')('express-api-proxy');
 var setup = require('./setup');
+var shortid = require('shortid');
 
 require('redis-streams')(redis);
 
 describe('proxy cache', function() {
+  var self;
+
   beforeEach(setup.beforeEach);
   afterEach(setup.afterEach);
 
-  it('writes api response to cache', function(done) {
-    // var apiResponse= {name: 'foo'};
-    var originUrl = this.apiUrl + '/api/' + new Date().getTime();
-    // var cache = new MemoryCache();
-    var cache = redis.createClient();
+  beforeEach(function() {
+    self = this;
+    this.cache = redis.createClient();
     this.proxyOptions.cacheMaxAge = 100;
-    this.proxyOptions.cache = cache;
+    this.proxyOptions.cache = this.cache;
+  });
+
+  it('writes api response to cache', function(done) {
+    var originUrl = this.apiUrl + '/api/' + shortid.generate();
+    this.cache.del(originUrl);
 
     supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
       .expect(200)
       .expect('Content-Type', /application\/json/)
-      .expect('Cache-Control', 'max-age=100')
+      .expect('Cache-Control', 'max-age=' + this.proxyOptions.cacheMaxAge)
       .expect('Express-Api-Proxy-Cache', 'miss')
       .end(function(err, res) {
-        cache.exists(originUrl, function(err, exists) {
+        self.cache.exists(originUrl, function(err, exists) {
           assert.ok(exists);
-          cache.exists(originUrl + '__headers', function(err, exists) {
+          self.cache.exists(originUrl + '__headers', function(err, exists) {
             assert.ok(exists);
             done();
           })
@@ -38,35 +45,32 @@ describe('proxy cache', function() {
   });
 
   it('reads api response from cache', function(done) {
-    var apiResponse= {name: 'foo'};
-    var originUrl = this.apiUrl + '/api/' + new Date().getTime();
+    this.apiResponse= {name: 'foo'};
+    var originUrl = this.apiUrl + '/api/' + shortid.generate();
 
-    var cache = redis.createClient();
-    this.proxyOptions.cache = cache;
+    this.cache.setex(originUrl, 1000, JSON.stringify(this.apiResponse));
+    this.cache.setex(originUrl + '__headers', 1000, JSON.stringify({'content-type':'application/json'}));
 
-    cache.setex(originUrl, 1000, JSON.stringify(apiResponse));
-    cache.setex(originUrl + '__headers', 1000, JSON.stringify({'content-type':'application/json'}));
-
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
+    supertest(this.server)
+      .get('/proxy?url=' + encodeURIComponent(originUrl))
       .set('Accept', 'application/json')
       .expect(200)   
       .expect('Content-Type', /^application\/json/)
       .expect('Cache-Control', /^max-age/)
       .expect('Express-Api-Proxy-Cache', 'hit')
       .expect(function(res) {
-        assert.ok(_.isEqual(res.body, apiResponse));
+        assert.ok(_.isEqual(res.body, self.apiResponse));
       })
       .end(done);
   });
 
   it('bypasses cache for non-GET requests', function(done) {
-    var cache = this.proxyOptions.cache = redis.createClient();
     var originUrl = this.apiUrl + '/api/' + new Date().getTime();
 
     supertest(this.server).put('/proxy?url=' + encodeURIComponent(originUrl))
       .expect(200)
       .end(function(err, res) {
-        cache.exists(originUrl, function(err, exists) {
+        self.cache.exists(originUrl, function(err, exists) {
           if (err) return done(err);
           assert.equal(exists, 0);
           done();
@@ -80,7 +84,6 @@ describe('proxy cache', function() {
       res.json({});
     });
 
-    this.proxyOptions.cache = redis.createClient();
     this.proxyOptions.cacheMaxAge = 200;
     
     var originUrl = this.apiUrl + '/cache';
@@ -101,7 +104,6 @@ describe('proxy cache', function() {
       res.json({});
     });
 
-    this.proxyOptions.cache = redis.createClient();
     this.proxyOptions.cacheMaxAge = 200;
     
     var originUrl = this.apiUrl + '/cache';
@@ -119,17 +121,13 @@ describe('proxy cache', function() {
   });
 
   it('original content-type preserved when request comes from cache', function(done) {
-    var self = this;
-
     this.remoteApi.get('/cache', function(req, res) {
       res.set('content-type', 'some/custom-type')
       res.send('adsfadsf');
     });
-
-    this.proxyOptions.cache = redis.createClient();
     
     var originUrl = this.apiUrl + '/cache';
-    this.proxyOptions.cache.del(originUrl);
+    this.cache.del(originUrl);
     var proxyUrl = '/proxy?url=' + encodeURIComponent(originUrl);
 
     supertest(this.server).get(proxyUrl)
@@ -143,6 +141,27 @@ describe('proxy cache', function() {
             assert.ok(_.isUndefined(res.headers['set-cookie']))
           })
           .end(done);
+      });
+  });
+
+  it('does not cache non-200 responses from remote API', function(done) {
+    this.remoteApi.get('/not-found', function(req, res) {
+      res.status(404).send('not found');
+    });
+
+    var originUrl = this.apiUrl + '/not-found';
+    this.cache.del(originUrl);
+    var proxyUrl = '/proxy?url=' + encodeURIComponent(originUrl);
+
+    supertest(this.server)
+      .get(proxyUrl)
+      .expect(404)
+      .expect('Express-Api-Proxy-Cache', 'miss')
+      .end(function(res) {
+        self.cache.exists(originUrl, function(err, exists) {
+          assert.ok(!exists);
+          done();
+        });
       });
   });
 });

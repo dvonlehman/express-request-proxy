@@ -1,6 +1,6 @@
 {
   "name": "express-api-proxy",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Intelligent proxy middleware for invoking remote APIs.",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,12 @@
     "proxy"
   ],
   "author": "David Von Lehman (https://github.com/dvonlehman)",
-  "license": "MIT",
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  ],
   "bugs": {
     "url": "https://github.com/4front/express-api-proxy/issues"
   },

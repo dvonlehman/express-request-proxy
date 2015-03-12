@@ -235,8 +235,10 @@ module.exports = function(options) {
 };
 ```
 
-See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example.
+See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example. For transforming HTML responses, the [trumpet package](https://www.npmjs.com/package/trumpet), with it's streaming capabilities, is a natural fit.
 
+## License
+Licensed under the Apache License, Version 2.0. See the top-level file LICENSE.txt and (http://www.apache.org/licenses/LICENSE-2.0).
 
 [npm-image]: https://img.shields.io/npm/v/express-api-proxy.svg?style=flat
 [npm-url]: https://npmjs.org/package/express-api-proxy

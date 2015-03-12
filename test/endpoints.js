@@ -19,7 +19,8 @@ describe('proxy api endpoints', function() {
       {
         // override to cache specific endpoint matches
         pattern: '/cache',
-        cache: cache
+        cache: cache,
+        cacheMaxAge: 100
       }
     ];
 
@@ -29,7 +30,7 @@ describe('proxy api endpoints', function() {
       .expect(200)
       .end(function(err) {
         cache.exists(originUrl, function(err, exists) {
-          assert.equal(exists, 1);
+          assert.ok(exists);
           cache.del(originUrl);
           done();
         })

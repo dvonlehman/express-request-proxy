@@ -41,6 +41,8 @@ describe('response transforms', function() {
 
     var cache = redis.createClient();
     this.proxyOptions.cache = cache;
+    this.proxyOptions.cacheMaxAge = 100;
+    
     var apiUrl = this.apiUrl + '/test';
     cache.del(apiUrl);
 

@@ -1,6 +1,6 @@
 {
   "name": "express-api-proxy",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Intelligent proxy middleware for invoking remote APIs.",
   "main": "index.js",
   "scripts": {

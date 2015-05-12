@@ -17,18 +17,29 @@ require('redis-streams')(redis);
 
 app.all('/proxy', apiProxy({
 	cache: redis.createClient(),
-	ensureAuthenticated: false, 
-	endpoints: [
-		{
-			pattern: /\public/,
-			maxCacheAge: 60 * 10 // cache responses for 10 minutes
+	apis: {
+		someApi: {
+			url: "https://someapi.com",
+			query: {
+				API_KEY: "env:SOME_API_KEY",
+			},
+			cache: true,
+			cacheMaxAge:
+			paths: [
+				{
+					pattern: '/movies/votes/(.*)',
+					cache: true
+				}
+			]
 		},
-		{
-			pattern: /\/secure/,
+		privateApi: {
 			ensureAuthenticated: true,
-			cache: false
+			url: "http://privateapi.com",
+			headers: {
+				"Basic-Auth": "env:PRIVATE_API_BASIC_AUTH"
+			}
 		}
-	]
+	}
 });
 ~~~
 
@@ -36,15 +47,11 @@ app.all('/proxy', apiProxy({
 
 ```js
 
-var params = {
-	api_key: '${SOMEAPI_API_KEY}',
-	api_secret: '${SOMEAPI_API_SECRET}'
-};
-
 $.ajax({
 	url: '/proxy',
 	data: {
-		url: 'http://someapi.com/api/secure?' + $.param(params);
+		api: 'someApi',
+		path: '/projects/5'
 	},
 	statusCode: {
 	   	200: function(data) {
@@ -160,9 +167,9 @@ options: {
 }
 ```
 
-### Caching 
+### Caching
 
-For APIs whose data does not frequently change, it is often desirable to cache responses at the proxy level. This avoids repeated network round-trip latency and can skirt rate limits imposed by the API provider. Caching can be set as a global option, but more commonly you'll want to control it for each individual endpoint. 
+For APIs whose data does not frequently change, it is often desirable to cache responses at the proxy level. This avoids repeated network round-trip latency and can skirt rate limits imposed by the API provider. Caching can be set as a global option, but more commonly you'll want to control it for each individual endpoint.
 
 The object provided to the `cache` option is expected to implement a subset of the [node_redis](https://github.com/mranney/node_redis) interface, specifically the [get](http://redis.io/commands/get), [set](http://redis.io/commands/set), [setex](http://redis.io/commands/setex), [exists](http://redis.io/commands/exists), [del](http://redis.io/commands/del), and [ttl](http://redis.io/commands/ttl) commands. The node_redis package can be used directly, other cache stores require a wrapper module that adapts to the redis interface.
 
@@ -189,7 +196,7 @@ If an API response is served from the cache, the `max-age` header will be set to
 
 ### Ensure Authenticated
 
-It's possible restrict proxy calls to authenticated users via the `ensureAuthenticated` option property which can be specified at the top level, or on a specific object in the `endpoints` array. 
+It's possible restrict proxy calls to authenticated users via the `ensureAuthenticated` option property which can be specified at the top level, or on a specific object in the `endpoints` array.
 
 ```js
 app.all('/proxy', apiProxy({
@@ -205,6 +212,37 @@ app.all('/proxy', apiProxy({
 The proxy does not perform authentication itself, that task is delegated to other middleware that executes earlier in the request pipeline which sets the property `req.ext.isAuthenticated`. If the `ensureAuthenticated` is `true` and `req.ext.isAuthenticated !== true`, a 401 (Unauthorized) HTTP response is returned.
 
 Note that this is different than authentication that might be enforced by the remote API itself. That's handled by passing environment variables as discussed above.
+
+### Path Level Overrides
+Sometimes it's desirable to override options based on what API endpoint is being invoked. The `paths` option allows specifying a pattern that if matched will
+
+~~~js
+app.all('/proxy', apiProxy({
+	cache: redis.createClient(),
+	apis: {
+		someApi: {
+			url: "https://someapi.com",
+			query: {
+				API_KEY: "env:SOME_API_KEY",
+			},
+			cache: true,
+			cacheMaxAge:
+			paths: {
+				'/movies/votes/(.*)': {
+					cache: true
+				}
+			}
+		},
+		privateApi: {
+			ensureAuthenticated: true,
+			url: "http://privateapi.com",
+			headers: {
+				"Basic-Auth": "env:PRIVATE_API_BASIC_AUTH"
+			}
+		}
+	}
+});
+~~~
 
 
 ### Transforms
@@ -225,7 +263,7 @@ module.exports = fn = function(options) {
 };
 ```
 
-If the transform needs to change the `Content-Type` of the response, a `contentType` property can be declared on the transform function that the proxy will recognize and set the header accordingly. 
+If the transform needs to change the `Content-Type` of the response, a `contentType` property can be declared on the transform function that the proxy will recognize and set the header accordingly.
 
 ```js
 module.exports = function(options) {

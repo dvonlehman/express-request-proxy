@@ -36,11 +36,13 @@
     "debug": "^2.1.1",
     "lodash": "^3.0.1",
     "lru-cache": "^2.5.0",
+    "path-to-regexp": "^1.1.0",
     "redis": "^0.12.1",
     "redis-streams": "^1.0.4",
     "request": "^2.53.0",
     "simple-errors": "^1.0.0",
-    "through2": "^0.6.3"
+    "through2": "^0.6.3",
+    "url-join": "0.0.1"
   },
   "devDependencies": {
     "express": "^4.11.1",

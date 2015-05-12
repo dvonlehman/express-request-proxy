@@ -31,11 +31,7 @@ module.exports.beforeEach = function() {
   this.apiUrl = 'http://localhost:' + apiPort;
   this.apiServer = http.createServer(this.remoteApi).listen(apiPort);
 
-  this.environmentVariables = {};
   this.proxyOptions = {
-    envVariableFn: function(req, name) {
-      return self.environmentVariables[name];
-    },
     timeout: 3000
   };
 

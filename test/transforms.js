@@ -12,18 +12,23 @@ describe('response transforms', function() {
   afterEach(setup.afterEach);
 
   beforeEach(function() {
-    this.remoteApi.get('/test', function(req, res) {
+    this.proxyOptions.apis.transformedApi = {
+      baseUrl: this.baseApiUrl,
+      transforms: [
+        appenderTransform('<<EOF>>', 'text/html')
+      ]
+    };
+
+    this.remoteApi.get('/api/transform', function(req, res) {
       // Just echo the query back in the response
       res.set('x-custom', 'custom header');
       res.set('content-type', 'text/plain');
       res.send('1234');
     });
-
-    this.proxyOptions.transforms = [appenderTransform('<<EOF>>', 'text/html')];
   });
 
-  it('performs transform', function(done) {      
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
+  it('performs transform', function(done) {
+    supertest(this.server).get('/proxy?api=transformedApi&path=transform')
       .expect(200)
       .expect('x-custom', 'custom header')
       .expect('Content-Type', /^text\/html/)
@@ -39,14 +44,17 @@ describe('response transforms', function() {
   it('transformed response is stored in cache', function(done) {
     var self = this;
 
-    var cache = redis.createClient();
-    this.proxyOptions.cache = cache;
-    this.proxyOptions.cacheMaxAge = 100;
-    
-    var apiUrl = this.apiUrl + '/test';
-    cache.del(apiUrl);
+    this.proxyOptions.cache = redis.createClient();
 
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(apiUrl))
+    _.extend(this.proxyOptions.apis.transformedApi, {
+      cache: true,
+      cacheMaxAge: 100
+    });
+
+    var apiUrl = this.baseApiUrl + '/transform';
+    this.proxyOptions.cache.del(apiUrl);
+
+    supertest(this.server).get('/proxy?api=transformedApi&path=transform')
       .expect(200)
       .expect(function(res) {
         assert.equal(res.text, '1234<<EOF>>');
@@ -54,7 +62,7 @@ describe('response transforms', function() {
       .end(function(err, res) {
         if (err) return done(err);
 
-        supertest(self.server).get('/proxy?url=' + encodeURIComponent(apiUrl))
+        supertest(self.server).get('/proxy?api=transformedApi&path=transform')
           .expect(200)
           .expect('Content-Type', /^text\/html/)
           .expect('1234<<EOF>>')
@@ -63,9 +71,9 @@ describe('response transforms', function() {
   });
 
   it('works with multiple transforms', function(done) {
-    this.proxyOptions.transforms.push(appenderTransform('<<EOF2>>'));
+    this.proxyOptions.apis.transformedApi.transforms.push(appenderTransform('<<EOF2>>', 'text/html'));
 
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
+    supertest(this.server).get('/proxy?api=transformedApi&path=transform')
       .expect(200)
       .expect(function(res) {
         assert.equal(res.text, '1234<<EOF>><<EOF2>>');
@@ -74,8 +82,9 @@ describe('response transforms', function() {
   });
 
   it('allows transform to override content-type', function(done) {
-    this.proxyOptions.transforms = [appenderTransform('XYZ', 'text/html')];
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/test'))
+    this.proxyOptions.apis.transformedApi.transforms = [appenderTransform('XYZ', 'text/html')];
+    supertest(this.server)
+      .get('/proxy?api=transformedApi&path=transform')
       .expect(200)
       .expect('Content-Type', /^text\/html/)
       .expect(function(res) {
@@ -85,12 +94,13 @@ describe('response transforms', function() {
   });
 
   function appenderTransform(appendText, contentType) {
-    var fn = through2(function(chunk, enc, cb) { 
-      this.push(chunk + appendText);
-      cb();
-    });
-
-    fn.contentType = contentType;
-    return fn;
-  }
+    return {
+      name: 'appender',
+      contentType: contentType,
+      transform: through2(function(chunk, enc, cb) {
+        this.push(chunk + appendText);
+        cb();
+      })
+    };
+  };
 });

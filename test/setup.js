@@ -11,7 +11,7 @@ module.exports.beforeEach = function() {
   this.apiResponse = null;
 
   this.remoteApi = express();
-  this.remoteApi.all('/api/:apikey?', bodyParser.json(), function(req, res) {
+  this.remoteApi.all('/api', bodyParser.json(), function(req, res) {
     setTimeout(function() {
       // Just echo the query back in the response
       res.set('Content-Type', 'application/json');
@@ -23,16 +23,17 @@ module.exports.beforeEach = function() {
     }, self.apiLatency);
   });
 
-  this.remoteApi.all('/error', function(req, res, next) {
+  this.remoteApi.all('/api/error', function(req, res, next) {
     res.status(400).send("error message");
   });
 
   var apiPort = 5998;
-  this.apiUrl = 'http://localhost:' + apiPort;
+  this.baseApiUrl = 'http://localhost:' + apiPort + '/api';
   this.apiServer = http.createServer(this.remoteApi).listen(apiPort);
 
   this.proxyOptions = {
-    timeout: 3000
+    timeout: 3000,
+    apis: {}
   };
 
   this.user = {};
@@ -66,7 +67,7 @@ module.exports.beforeEach = function() {
 
 module.exports.afterEach = function() {
   if (this.proxyOptions.cache)
-    this.proxyOptions.cache.del(this.apiUrl);
+    this.proxyOptions.cache.del(this.baseApiUrl);
 
   this.apiServer.close();
 };

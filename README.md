@@ -15,11 +15,20 @@ var apiProxy = require('express-api-proxy');
 
 require('redis-streams')(redis);
 
+app.post('/slack', apiProxy({
+	baseUrl: "https://hooks.slack.com/services/:path1/:path2/:path3",
+	paths: {
+		path1: "T02K2NUKG",
+		path2: "B07547L6L",
+		path3: "22Xi0sKtTH0TSS8jnjPwUZ4M"
+	}
+}));
+
 app.all('/proxy', apiProxy({
 	cache: redis.createClient(),
 	apis: {
 		someApi: {
-			url: "https://someapi.com",
+			baseUrl: "https://someapi.com",
 			query: {
 				API_KEY: "env:SOME_API_KEY",
 			},
@@ -54,9 +63,9 @@ $.ajax({
 		path: '/projects/5'
 	},
 	statusCode: {
-	   	200: function(data) {
-	   		console.log(data);
-	   	},
+  	200: function(data) {
+  		console.log(data);
+		},
 		401: function() {
 		  console.log("unauthorized api call");
 		}

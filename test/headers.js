@@ -7,18 +7,23 @@ describe('http headers', function() {
   beforeEach(setup.beforeEach);
   afterEach(setup.afterEach);
 
-  it('passes through content-type', function(done) {      
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/api'))
+  beforeEach(function() {
+    this.proxyOptions.apis.test = {
+      baseUrl: this.baseApiUrl
+    };
+  });
+
+  it('passes through content-type', function(done) {
+    supertest(this.server).get('/proxy?api=test')
       .expect(200)
       .expect('Content-Type', /^application\/json/)
       .end(done);
   });
 
   it('uses correct user-agent', function(done) {
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(this.apiUrl + '/api'))
+    supertest(this.server).get('/proxy?api=test')
       .expect(200)
       .expect(function(res) {
-        debugger;
         assert.equal(res.body.headers['user-agent'], 'express-api-proxy')
       })
       .end(done);

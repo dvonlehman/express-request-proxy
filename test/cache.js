@@ -9,6 +9,7 @@ var debug = require('debug')('express-api-proxy');
 var setup = require('./setup');
 var shortid = require('shortid');
 
+require('dash-assert');
 require('redis-streams')(redis);
 
 describe('proxy cache', function() {
@@ -22,13 +23,22 @@ describe('proxy cache', function() {
     this.cache = redis.createClient();
     this.proxyOptions.cacheMaxAge = 100;
     this.proxyOptions.cache = this.cache;
+
+    this.proxyOptions.apis.cachedApi = {
+      baseUrl: this.baseApiUrl,
+      cache: true,
+      cacheMaxAge: 100
+    };
   });
 
   it('writes api response to cache', function(done) {
-    var originUrl = this.apiUrl + '/api/' + shortid.generate();
+    this.apiResponse = {id: shortid.generate()};
+
+    // var originPath = shortid.generate();
+    var originUrl = this.baseApiUrl;
     this.cache.del(originUrl);
 
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
+    supertest(this.server).get('/proxy?api=cachedApi')
       .expect(200)
       .expect('Content-Type', /application\/json/)
       .expect('Cache-Control', 'max-age=' + this.proxyOptions.cacheMaxAge)
@@ -46,15 +56,16 @@ describe('proxy cache', function() {
 
   it('reads api response from cache', function(done) {
     this.apiResponse= {name: 'foo'};
-    var originUrl = this.apiUrl + '/api/' + shortid.generate();
+    var originPath = shortid.generate();
+    var originUrl = this.baseApiUrl + '/' + originPath;
 
     this.cache.setex(originUrl, 1000, JSON.stringify(this.apiResponse));
     this.cache.setex(originUrl + '__headers', 1000, JSON.stringify({'content-type':'application/json'}));
 
     supertest(this.server)
-      .get('/proxy?url=' + encodeURIComponent(originUrl))
+      .get('/proxy?api=cachedApi&path=' + originPath)
       .set('Accept', 'application/json')
-      .expect(200)   
+      .expect(200)
       .expect('Content-Type', /^application\/json/)
       .expect('Cache-Control', /^max-age/)
       .expect('Express-Api-Proxy-Cache', 'hit')
@@ -65,9 +76,9 @@ describe('proxy cache', function() {
   });
 
   it('bypasses cache for non-GET requests', function(done) {
-    var originUrl = this.apiUrl + '/api/' + new Date().getTime();
+    var originUrl = this.baseApiUrl + '/' + new Date().getTime();
 
-    supertest(this.server).put('/proxy?url=' + encodeURIComponent(originUrl))
+    supertest(this.server).put('/proxy?api=cachedApi')
       .expect(200)
       .end(function(err, res) {
         self.cache.exists(originUrl, function(err, exists) {
@@ -79,40 +90,49 @@ describe('proxy cache', function() {
   });
 
   it('overrides Cache-Control from the origin API', function(done) {
-    this.remoteApi.get('/cache', function(req, res) {
+    var resp = {id: shortid.generate()};
+    this.remoteApi.get('/api/cache', function(req, res) {
       res.set('Cache-Control', 'max-age=20');
-      res.json({});
+      res.json(resp);
     });
 
-    this.proxyOptions.cacheMaxAge = 200;
-    
-    var originUrl = this.apiUrl + '/cache';
+    this.proxyOptions.apis.cachedApi.cacheMaxAge = 200;
+
+    var originUrl = this.baseApiUrl + '/cache';
     this.proxyOptions.cache.del(originUrl);
 
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
+    supertest(this.server).get('/proxy?api=cachedApi&path=cache')
       .expect(200)
       .expect('Cache-Control', 'max-age=200')
+      .expect(function(res) {
+        assert.deepEqual(res.body, resp);
+      })
       .end(done);
   });
 
   it('removes cache related headers', function(done) {
-    this.remoteApi.get('/cache', function(req, res) {
+    var resp = {id: shortid.generate()};
+
+    this.remoteApi.get('/api/cache', function(req, res) {
+      debug("/api/cache endpoint");
+
       res.set('last-modified', new Date().toUTCString());
       res.set('expires', new Date().toUTCString());
       res.set('etag', '345345345345');
 
-      res.json({});
+      res.json(resp);
     });
 
     this.proxyOptions.cacheMaxAge = 200;
-    
-    var originUrl = this.apiUrl + '/cache';
+
+    var originUrl = this.baseApiUrl + '/cache';
     this.proxyOptions.cache.del(originUrl);
 
-    supertest(this.server).get('/proxy?url=' + encodeURIComponent(originUrl))
+    supertest(this.server).get('/proxy?api=cachedApi&path=cache')
       .expect(200)
       .expect('Content-Type', /application\/json/)
       .expect(function(res) {
+        assert.deepEqual(res.body, resp);
         assert.ok(_.isUndefined(res.headers['last-modified']));
         assert.ok(_.isUndefined(res.headers['expires']));
         assert.ok(_.isUndefined(res.headers['etag']));
@@ -121,37 +141,44 @@ describe('proxy cache', function() {
   });
 
   it('original content-type preserved when request comes from cache', function(done) {
-    this.remoteApi.get('/cache', function(req, res) {
+    var resp = shortid.generate();
+
+    this.remoteApi.get('/api/custom-content', function(req, res) {
+      debug("custom-content api endpoint");
       res.set('content-type', 'some/custom-type')
-      res.send('adsfadsf');
+      res.send(resp);
     });
-    
-    var originUrl = this.apiUrl + '/cache';
+
+    var originUrl = this.baseApiUrl + '/custom-content';
     this.cache.del(originUrl);
-    var proxyUrl = '/proxy?url=' + encodeURIComponent(originUrl);
+    var proxyUrl = '/proxy?api=cachedApi&path=custom-content';
 
     supertest(this.server).get(proxyUrl)
       .expect(200)
       .expect('Express-Api-Proxy-Cache', 'miss')
+      .expect('Content-Type', /^some\/custom-type/)
+      .expect(resp)
       .end(function(err, res) {
         supertest(self.server).get(proxyUrl)
           .expect('Express-Api-Proxy-Cache', 'hit')
+          .expect(200)
+          .expect(resp)
           .expect('Content-Type', /^some\/custom-type/)
           .expect(function(res) {
-            assert.ok(_.isUndefined(res.headers['set-cookie']))
+            assert.isUndefined(res.headers['set-cookie']);
           })
           .end(done);
       });
   });
 
   it('does not cache non-200 responses from remote API', function(done) {
-    this.remoteApi.get('/not-found', function(req, res) {
+    this.remoteApi.get('/api/not-found', function(req, res) {
       res.status(404).send('not found');
     });
 
-    var originUrl = this.apiUrl + '/not-found';
+    var originUrl = this.baseApiUrl + '/not-found';
     this.cache.del(originUrl);
-    var proxyUrl = '/proxy?url=' + encodeURIComponent(originUrl);
+    var proxyUrl = '/proxy?api=cachedApi&path=not-found';
 
     supertest(this.server)
       .get(proxyUrl)

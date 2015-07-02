@@ -10,6 +10,21 @@ describe('proxy api endpoints', function() {
   beforeEach(setup.beforeEach);
   afterEach(setup.afterEach);
 
+  beforeEach(function() {
+    this.proxyOptions.apis.test = {
+      paths: [
+        {
+          pattern: "/cached/(.*)",
+          cache: true
+        },
+        {
+          pattern: "/secure/(.*)",
+          ensureAuthenticated: true
+        }
+      ]
+    };
+  });
+
   it('endpoint match overrides defaults', function(done) {
     // Set default to not cache
     this.proxyOptions.cache = null;

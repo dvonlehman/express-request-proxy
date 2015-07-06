@@ -79,6 +79,7 @@ describe('requestOptions', function() {
       method: 'get',
       headers: {
         'cookie': 'should_not_passthrough',
+        'if-none-match': '345345',
         'header1': '1'
       }
     };
@@ -88,6 +89,68 @@ describe('requestOptions', function() {
     };
 
     var opts = requestOptions(req, endpointOptions);
-    assert.deepEqual(opts.headers, {header1: '1'});
+    assert.deepEqual(opts.headers, _.pick(req.headers, 'if-none-match', 'header1'));
+  });
+
+  it('does not passthrough certain headers when response to be cached', function() {
+    var req = {
+      method: 'get',
+      headers: {
+        'cookie': 'should_not_passthrough',
+        'if-none-match': 'should_not_passthrough',
+        'if-modified-since': 'should_not_passthrough',
+        'header1': '1'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      cache: {}
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.deepEqual(opts.headers, _.pick(req.headers, 'header1'));
+  });
+
+  it('X-Forwarded-For is included in headers', function() {
+    var req = {
+      method: 'get',
+      ip: '127.0.0.1'
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      cache: {}
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.headers['X-Forwarded-For'], req.ip);
+  });
+
+  it('cannot exceed limit options', function() {
+    var req = {
+      method: 'get',
+      headers: {
+        'cookie': 'should_not_passthrough',
+        'if-none-match': 'should_not_passthrough',
+        'if-modified-since': 'should_not_passthrough',
+        'header1': '1'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      timeout: 30,
+      maxRedirects: 5
+    };
+
+    var limits = {
+      timeout: 5,
+      maxRedirects: 3
+    };
+
+    var opts = requestOptions(req, endpointOptions, limits);
+    assert.equal(opts.timeout, limits.timeout);
+    assert.equal(opts.maxRedirects, limits.maxRedirects);
   });
 });

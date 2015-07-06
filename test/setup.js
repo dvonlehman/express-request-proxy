@@ -1,30 +1,45 @@
 var express = require('express');
 var http = require('http');
+var urljoin = require('url-join');
 var bodyParser = require('body-parser');
 var debug = require('debug')('express-api-proxy');
-var proxy = require('..');
 var _ = require('lodash');
 
 module.exports.beforeEach = function() {
   var self = this;
   this.apiLatency = 0;
   this.apiResponse = null;
+  this.apiResponseStatus = 200;
+  this.originHeaders = {};
 
   this.remoteApi = express();
   this.remoteApi.all('/api', bodyParser.json(), function(req, res) {
     setTimeout(function() {
-      // Just echo the query back in the response
-      res.set('Content-Type', 'application/json');
+      // if (!self.originHeaders)
+      //   self.originHeaders = {};
 
-      if (self.apiResponse)
-        res.json(self.apiResponse);
-      else
-        res.json(_.pick(req, 'query', 'path', 'params', 'headers', 'method', 'body'));
+      if (!self.originHeaders['Content-Type'])
+        self.originHeaders['Content-Type'] = 'application/json';
+
+      _.each(self.originHeaders, function(value, key) {
+        res.set(key, value);
+      });
+
+      if (self.apiResponseStatus)
+        res.statusCode = self.apiResponseStatus;
+
+      if (self.apiResponse) {
+        if (self.originHeaders['Content-Type'] === 'application/json')
+          return res.json(self.apiResponse);
+        else
+          res.send(self.apiResponse);
+      }
+      else {
+        var context = _.pick(req, 'query', 'path', 'params', 'headers', 'method', 'body');
+        context.fullUrl = urljoin('http://localhost:' + apiPort, req.originalUrl);
+        res.json(context);
+      }
     }, self.apiLatency);
-  });
-
-  this.remoteApi.all('/api/error', function(req, res, next) {
-    res.status(400).send("error message");
   });
 
   var apiPort = 5998;
@@ -32,42 +47,34 @@ module.exports.beforeEach = function() {
   this.apiServer = http.createServer(this.remoteApi).listen(apiPort);
 
   this.proxyOptions = {
-    timeout: 3000,
-    apis: {}
+    url: this.baseApiUrl,
+    timeout: 3000
   };
-
-  this.user = {};
-  this.isAuthenticated = false;
 
   this.server = express();
   this.server.use(function(req, res, next) {
     req.ext = {};
-    req.user = self.user;
-    req.ext.isAuthenticated = self.isAuthenticated;
-
     next();
-  });
-
-  this.server.all('/proxy', function(req, res, next) {
-    // Wrap this in a function to allow individual tests
-    // the opportunity to modify proxyOptions.
-    proxy(self.proxyOptions)(req, res, next);
-  });
-
-  this.server.use(function(err, req, res, next) {
-    if (!err.status)
-      err.status = 500;
-
-    if (err.status >= 500)
-      console.error(err.stack);
-
-    res.status(err.status).send(err.message);
   });
 };
 
-module.exports.afterEach = function() {
-  if (this.proxyOptions.cache)
-    this.proxyOptions.cache.del(this.baseApiUrl);
+module.exports.errorHandler = function(err, req, res, next) {
+  if (!err.status)
+    err.status = 500;
 
+  // if (err.status >= 500)
+  console.error(err.message);
+
+  res.status(err.status).send(err.message);
+};
+
+module.exports.afterEach = function(done) {
   this.apiServer.close();
+
+  if (this.proxyOptions.cache) {
+    this.proxyOptions.cache.flushall(done);
+  }
+  else {
+    done();
+  }
 };

@@ -2,10 +2,9 @@ var assert = require('assert');
 var querystring = require('querystring');
 var supertest = require('supertest');
 var _ = require('lodash');
-var redis = require('redis');
+var memoryCache = require('memory-cache-stream');
+var proxy = require('..');
 var setup = require('./setup');
-
-require('redis-streams');
 
 describe('timeout', function() {
   beforeEach(setup.beforeEach);
@@ -14,41 +13,43 @@ describe('timeout', function() {
   var self;
   beforeEach(function() {
     self = this;
-    
-    this.apiLatency = 50;
-    this.proxyOptions.timeout = 20;
 
-    this.proxyOptions.apis.slowApi = {
-      baseUrl: this.baseApiUrl
-    };
+    this.server.get('/proxy', proxy(this.proxyOptions));
+    this.server.use(setup.errorHandler);
   });
 
   it('returns error message', function(done) {
-    supertest(this.server).get('/proxy?api=slowApi&path=error')
+    this.apiResponseStatus = 400;
+    this.apiResponse = {error: "bad request"};
+
+    supertest(this.server).get('/proxy')
       .expect(400)
-      .expect(/error message/)
+      .expect('Content-Type', /application\/json/)
+      .expect(function(res) {
+        assert.deepEqual(res.body, self.apiResponse)
+      })
       .end(done);
   });
 
   it('api timeout returns 408', function(done) {
+    this.apiLatency = 50;
+    this.proxyOptions.timeout = 20;
+
     supertest(this.server)
-      .get('/proxy?api=slowApi')
+      .get('/proxy')
       .expect(408, done);
   });
 
-  it('api returns 408 when writing to cache', function(done) {
-    this.proxyOptions.cache = redis.createClient();
-
-    // var cacheKey = new Date().getTime().toString();
-    // this.proxyOptions.cacheKeyFn = function(req) {
-    //   return cacheKey;
-    // };
+  it('api returns 408 when instructed to cache', function(done) {
+    this.apiLatency = 50;
+    this.proxyOptions.timeout = 20;
+    this.proxyOptions.cache = memoryCache();
 
     supertest(this.server)
-      .get('/proxy?api=slowApi')
+      .get('/proxy')
       .expect(408)
       .end(function(err, res) {
-        self.proxyOptions.cache.exists(self.baseApiUrl + '/api', function(err, exists) {
+        self.proxyOptions.cache.exists(self.baseApiUrl, function(err, exists) {
           assert.equal(0, exists);
           done();
         })

@@ -43,6 +43,7 @@
     "url-join": "0.0.1"
   },
   "devDependencies": {
+    "dash-assert": "^1.0.2",
     "express": "^4.11.1",
     "istanbul": "^0.3.5",
     "memory-cache-stream": "^1.0.4",

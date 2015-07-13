@@ -54,6 +54,35 @@ describe('requestOptions', function() {
     assert.equal(formatUrl(opts.url), 'http://someapi.com/secret/foo/123');
   });
 
+  it('substitutes optional parameters', function(done) {
+    var req = {
+      method: 'get',
+      params: {
+        resource: 'foo',
+        id: '123',
+        apikey: 'should_be_overridden'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com/:apikey/:resource/:id?',
+      params: {
+        apikey: 'secret'
+      }
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(formatUrl(opts.url), 'http://someapi.com/secret/foo/123');
+
+    // Now clear out the id and make sure it is not passed
+    req.params.resource = "bar";
+    req.params.id = null;
+    opts = requestOptions(req, endpointOptions);
+    assert.equal(formatUrl(opts.url), 'http://someapi.com/secret/bar');
+
+    done();
+  });
+
   it('appends headers', function() {
     var req = {
       method: 'get',

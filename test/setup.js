@@ -13,7 +13,17 @@ module.exports.beforeEach = function() {
   this.originHeaders = {};
 
   this.remoteApi = express();
-  this.remoteApi.all('/api', bodyParser.json(), function(req, res) {
+
+  function parseBody(req, res, next) {
+    if (req.get('content-type') === 'application/json')
+      bodyParser.json()(req, res, next);
+    else if (req.get('content-type') === 'application/x-www-form-urlencoded')
+      bodyParser.urlencoded({extended: false})(req, res, next);
+    else
+      next();
+  }
+
+  this.remoteApi.all('/api', parseBody, function(req, res) {
     setTimeout(function() {
       // if (!self.originHeaders)
       //   self.originHeaders = {};

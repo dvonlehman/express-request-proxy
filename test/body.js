@@ -24,6 +24,7 @@ describe('req body', function() {
       .expect('Content-Type', /^application\/json/)
       .expect(function(res) {
         assert.deepEqual(res.body.body, postData);
+        assert.equal(res.body.headers['content-type'], 'application/json')
       })
       .end(done);
   });

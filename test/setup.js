@@ -34,10 +34,6 @@ module.exports.beforeEach = function() {
 
   this.remoteApi.all('/api', maybeParseBody, function(req, res, next) {
     setTimeout(function() {
-      // if (!self.originHeaders)
-      //   self.originHeaders = {};
-
-      debugger;
       if (!self.originHeaders['Content-Type'])
         self.originHeaders['Content-Type'] = 'application/json';
 

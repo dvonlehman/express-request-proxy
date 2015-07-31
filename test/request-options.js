@@ -182,4 +182,31 @@ describe('requestOptions', function() {
     assert.equal(opts.timeout, limits.timeout);
     assert.equal(opts.maxRedirects, limits.maxRedirects);
   });
+
+  it('uses method from the req', function() {
+    var req = {
+      method: 'post'
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com'
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.method, req.method);
+  });
+
+  it('uses method from the options', function() {
+    var req = {
+      method: 'post'
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      method: 'put'
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.method, endpointOptions.method);
+  });
 });

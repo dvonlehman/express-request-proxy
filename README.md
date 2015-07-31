@@ -62,10 +62,6 @@ __`headers`__
 
 An object of HTTP headers to be appended to the request to the remote url. This is also a good way to inject sensitive keys stored in environment variables. See the [http basic auth](#http-basic-auth) section for example usage.
 
-__`body`__
-
-An object of parameters to append to the request to the remote url. This requires that the `Content-Type` header in the inbound request to the proxy is set to either `application/json` or `application/www-url-encoded`.
-
 __`cache`__
 
 Cache object that conforms to the [node_redis](https://www.npmjs.com/package/redis) API. Can set to `false` at an endpoint level to explicitly disable caching for certain APIs. See [Cache section](#caching) below for more details.
@@ -91,7 +87,7 @@ Name of the http header returned in the proxy response with the value `"hit"` or
 For http endpoints protected by [HTTP Basic authentication](http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side), a username and password should be sent in the form `username:password`  which is then base64 encoded.
 
 ~~~js
-var usernamePassword = process.env.SOMEAPI_USERNAME + ":" 
+var usernamePassword = process.env.SOMEAPI_USERNAME + ":"
 	+ process.env.SOMEAPI_PASSSWORD;
 
 app.post("/api/:resource", requestProxy({
@@ -106,7 +102,7 @@ app.post("/api/:resource", requestProxy({
 
 
 #### Logged-In User Properties
-Sometimes it's necessary to pass attributes of the current logged in user (on the server) into the request to the remote endpoint as headers, query params, etc. Rather than passing environment variables, simply specify the desired user properties. 
+Sometimes it's necessary to pass attributes of the current logged in user (on the server) into the request to the remote endpoint as headers, query params, etc. Rather than passing environment variables, simply specify the desired user properties.
 
 ~~~js
 app.all("/api/protected/:resource", requestProxy({

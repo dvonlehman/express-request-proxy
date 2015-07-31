@@ -2,8 +2,9 @@ var express = require('express');
 var http = require('http');
 var urljoin = require('url-join');
 var bodyParser = require('body-parser');
-var debug = require('debug')('express-api-proxy');
+var debug = require('debug')('express-request-proxy');
 var _ = require('lodash');
+var is = require('type-is');
 
 module.exports.beforeEach = function() {
   var self = this;
@@ -14,20 +15,29 @@ module.exports.beforeEach = function() {
 
   this.remoteApi = express();
 
-  function parseBody(req, res, next) {
-    if (req.get('content-type') === 'application/json')
-      bodyParser.json()(req, res, next);
-    else if (req.get('content-type') === 'application/x-www-form-urlencoded')
-      bodyParser.urlencoded({extended: false})(req, res, next);
-    else
-      next();
+  function maybeParseBody(req, res, next) {
+    if (is.hasBody(req)) {
+      switch (is(req, ['urlencoded', 'json'])) {
+        case 'urlencoded':
+          debug("parse api urlencoded body");
+          return bodyParser.urlencoded({extended: false})(req, res, next);
+        case 'json':
+          debug("parse api json body");
+          return bodyParser.json()(req, res, next);
+        default:
+          break;
+      }
+    }
+
+    next();
   }
 
-  this.remoteApi.all('/api', parseBody, function(req, res) {
+  this.remoteApi.all('/api', maybeParseBody, function(req, res, next) {
     setTimeout(function() {
       // if (!self.originHeaders)
       //   self.originHeaders = {};
 
+      debugger;
       if (!self.originHeaders['Content-Type'])
         self.originHeaders['Content-Type'] = 'application/json';
 
@@ -79,7 +89,8 @@ module.exports.errorHandler = function(err, req, res, next) {
 };
 
 module.exports.afterEach = function(done) {
-  this.apiServer.close();
+  if (this.apiServer)
+    this.apiServer.close();
 
   if (this.proxyOptions.cache) {
     this.proxyOptions.cache.flushall(done);

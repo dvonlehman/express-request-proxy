@@ -1,5 +1,4 @@
 var assert = require('assert');
-var supertest = require('supertest');
 var _ = require('lodash');
 var sinon = require('sinon');
 var parseUrl = require('url').parse;
@@ -75,7 +74,7 @@ describe('requestOptions', function() {
     assert.equal(formatUrl(opts.url), 'http://someapi.com/secret/foo/123');
 
     // Now clear out the id and make sure it is not passed
-    req.params.resource = "bar";
+    req.params.resource = 'bar';
     req.params.id = null;
     opts = requestOptions(req, endpointOptions);
     assert.equal(formatUrl(opts.url), 'http://someapi.com/secret/bar');

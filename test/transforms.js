@@ -2,9 +2,8 @@ var assert = require('assert');
 var memoryCache = require('memory-cache-stream');
 var supertest = require('supertest');
 var _ = require('lodash');
-var memoryCache = require('memory-cache-stream');
 var through2 = require('through2');
-var proxy = require("..");
+var proxy = require('..');
 var setup = require('./setup');
 
 describe('response transforms', function() {
@@ -94,5 +93,5 @@ describe('response transforms', function() {
         cb();
       })
     };
-  };
+  }
 });

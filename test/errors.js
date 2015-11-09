@@ -1,7 +1,5 @@
 var assert = require('assert');
-var querystring = require('querystring');
 var supertest = require('supertest');
-var _ = require('lodash');
 var memoryCache = require('memory-cache-stream');
 var proxy = require('..');
 var setup = require('./setup');
@@ -20,13 +18,13 @@ describe('timeout', function() {
 
   it('returns error message', function(done) {
     this.apiResponseStatus = 400;
-    this.apiResponse = {error: "bad request"};
+    this.apiResponse = {error: 'bad request'};
 
     supertest(this.server).get('/proxy')
       .expect(400)
       .expect('Content-Type', /application\/json/)
       .expect(function(res) {
-        assert.deepEqual(res.body, self.apiResponse)
+        assert.deepEqual(res.body, self.apiResponse);
       })
       .end(done);
   });
@@ -49,10 +47,10 @@ describe('timeout', function() {
       .get('/proxy')
       .expect(408)
       .end(function(err, res) {
-        self.proxyOptions.cache.exists(self.baseApiUrl, function(err, exists) {
+        self.proxyOptions.cache.exists(self.baseApiUrl, function(_err, exists) {
           assert.equal(0, exists);
           done();
-        })
+        });
       });
   });
 });

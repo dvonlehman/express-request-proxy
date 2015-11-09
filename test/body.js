@@ -1,7 +1,6 @@
 var assert = require('assert');
 var supertest = require('supertest');
-var _ = require('lodash');
-var proxy = require("..");
+var proxy = require('..');
 var querystring = require('querystring');
 var setup = require('./setup');
 
@@ -24,7 +23,7 @@ describe('req body', function() {
       .expect('Content-Type', /^application\/json/)
       .expect(function(res) {
         assert.deepEqual(res.body.body, postData);
-        assert.equal(res.body.headers['content-type'], 'application/json')
+        assert.equal(res.body.headers['content-type'], 'application/json');
       })
       .end(done);
   });

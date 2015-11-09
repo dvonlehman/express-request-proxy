@@ -1,6 +1,6 @@
 {
   "name": "express-request-proxy",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Intelligent http proxy Express middleware",
   "main": "index.js",
   "scripts": {
@@ -21,12 +21,7 @@
     "proxy"
   ],
   "author": "David Von Lehman (https://github.com/dvonlehman)",
-  "licenses": [
-    {
-      "type": "Apache-2.0",
-      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-    }
-  ],
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/4front/express-request-proxy/issues"
   },
@@ -46,7 +41,9 @@
     "url-join": "0.0.1"
   },
   "devDependencies": {
+    "compression": "^1.6.0",
     "dash-assert": "^1.0.2",
+    "eslint": "^1.9.0",
     "express": "^4.11.1",
     "istanbul": "^0.3.5",
     "memory-cache-stream": "^1.0.4",

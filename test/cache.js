@@ -1,9 +1,7 @@
 var assert = require('assert');
-var express = require('express');
-var http = require('http');
-var querystring = require('querystring');
 var supertest = require('supertest');
 var _ = require('lodash');
+var async = require('async');
 var memoryCache = require('memory-cache-stream');
 // var redis = require('redis');
 var debug = require('debug')('express-api-proxy');
@@ -42,22 +40,18 @@ describe('proxy cache', function() {
         if (err) return done(err);
 
         var cacheKey = res.body.fullUrl;
-        self.cache.exists(cacheKey, function(err, exists) {
-          assert.ok(exists);
-          self.cache.exists(cacheKey + '__headers', function(err, exists) {
-            if (err) return done(err);
-
+        async.each([cacheKey, cacheKey + '__headers'], function(key, cb) {
+          self.cache.exists(cacheKey + '__headers', function(_err, exists) {
+            if (_err) return cb(_err);
             assert.ok(exists);
-            done();
+            cb();
           });
-        });
+        }, done);
       });
   });
 
   it('reads api response from cache', function(done) {
-    this.apiResponse= {name: 'foo'};
-    var originPath = shortid.generate();
-    var originUrl = this.baseApiUrl + '/' + originPath;
+    this.apiResponse = {name: 'foo'};
 
     this.cache.setex(this.baseApiUrl,
       this.proxyOptions.cacheMaxAge,
@@ -65,7 +59,7 @@ describe('proxy cache', function() {
 
     this.cache.setex(this.baseApiUrl + '__headers',
       this.proxyOptions.cacheMaxAge,
-      JSON.stringify({'content-type':'application/json'}));
+      JSON.stringify({'content-type': 'application/json'}));
 
     supertest(this.server)
       .get('/proxy')
@@ -84,11 +78,11 @@ describe('proxy cache', function() {
     supertest(this.server).put('/proxy')
       .expect(200)
       .end(function(err, res) {
-        self.cache.exists(self.baseApiUrl, function(err, exists) {
-          if (err) return done(err);
+        self.cache.exists(self.baseApiUrl, function(_err, exists) {
+          if (_err) return done(_err);
           assert.equal(exists, 0);
           done();
-        })
+        });
       });
   });
 
@@ -125,8 +119,8 @@ describe('proxy cache', function() {
       .expect(function(res) {
         assert.deepEqual(res.body, self.apiResponse);
         assert.ok(_.isUndefined(res.headers['last-modified']));
-        assert.ok(_.isUndefined(res.headers['expires']));
-        assert.ok(_.isUndefined(res.headers['etag']));
+        assert.ok(_.isUndefined(res.headers.expires));
+        assert.ok(_.isUndefined(res.headers.etag));
       })
       .end(done);
   });
@@ -158,7 +152,7 @@ describe('proxy cache', function() {
     this.apiResponseStatus = 404;
 
     supertest(this.server)
-      .get("/proxy")
+      .get('/proxy')
       .expect(404)
       .expect('Express-Api-Proxy-Cache', 'miss')
       .end(function(res) {
@@ -178,9 +172,44 @@ describe('proxy cache', function() {
     supertest(this.server)
       .get('/proxy')
       .expect(function(res) {
-        assert.isUndefined(res.body.headers['etag']);
+        assert.isUndefined(res.body.headers.etag);
         assert.isUndefined(res.body.headers['if-modified-since']);
       })
       .end(done);
+  });
+
+  it('retains gzip encoding when served from cache', function(done) {
+    this.apiGzipped = true;
+    this.apiResponse = {foo: 1, name: 'elmer'};
+
+    async.series([
+      function(cb) {
+        supertest(self.server).get('/proxy')
+          .set('Accept-Encoding', 'gzip')
+          .expect('Express-Api-Proxy-Cache', 'miss')
+          .expect(function(res) {
+            assert.deepEqual(res.body, self.apiResponse);
+          })
+          .end(cb);
+      },
+      function(cb) {
+        // Check what's in the cache
+        self.cache.get(self.baseApiUrl + '__headers', function(err, value) {
+          assert.deepEqual({
+            'content-type': 'application/json; charset=utf-8'
+          }, JSON.parse(value));
+          cb();
+        });
+      },
+      function(cb) {
+        supertest(self.server).get('/proxy')
+          .set('Accept-Encoding', 'gzip')
+          .expect('Express-Api-Proxy-Cache', 'hit')
+          .expect(function(res) {
+            assert.deepEqual(res.body, self.apiResponse);
+          })
+          .end(cb);
+      }
+    ], done);
   });
 });

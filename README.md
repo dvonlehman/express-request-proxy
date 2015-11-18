@@ -138,6 +138,8 @@ app.get('/proxy/:route', requestProxy({
 }));
 ```
 
+Only `GET` requests are subject to caching, for all other methods the `cacheMaxAge` is ignored.
+
 #### Caching Headers
 If an API response is served from the cache, the `max-age` header will be set to the remaining TTL of the cached object. The proxy cache trumps any HTTP headers such as `Last-Modified`, `Expires`, or `ETag`, so these get discarded. Effectively the proxy takes over the caching behavior from the origin for the duration that it exists there.
 
@@ -156,6 +158,18 @@ The proxy does not perform authentication itself, that task is delegated to othe
 
 Note that this is different than authentication that might be enforced by the remote API itself. That's handled by injecting headers or query params as discussed above.
 
+### Wildcard routes
+
+Sometimes you want to configure one catch-all proxy route that will forward on all path segments starting from the `*`. The example below will proxy a request to `GET /api/widgets/12345` to `GET https://remoteapi.com/api/v1/widgets/12345` and `POST /api/users` to `POST https://remoteapi.com/api/v1/users`.
+
+~~~js
+app.all('/api/*', requestProxy({
+  url: 'https://remoteapi.com/api/v1/*',
+  query: {
+    apikey: 'xxx'
+  }
+}));
+~~~
 
 ### Transforms
 

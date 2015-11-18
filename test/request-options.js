@@ -1,5 +1,4 @@
 var assert = require('assert');
-var _ = require('lodash');
 var sinon = require('sinon');
 var parseUrl = require('url').parse;
 var formatUrl = require('url').format;
@@ -82,6 +81,25 @@ describe('requestOptions', function() {
     done();
   });
 
+  it('builds origin URL with wildcard parameter', function(done) {
+    var req = {
+      method: 'get',
+      params: {
+        '0': 'path1/path2',
+        version: 'v1'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com/:version/*'
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.deepEqual(opts.url, 'http://someapi.com/v1/path1/path2');
+
+    done();
+  });
+
   it('appends headers', function() {
     var req = {
       method: 'get',
@@ -99,10 +117,11 @@ describe('requestOptions', function() {
     };
 
     var opts = requestOptions(req, endpointOptions);
-    assert.deepEqual(opts.headers, {header1: '1', header2: '2'});
+    assert.equal(opts.headers.header1, '1');
+    assert.equal(opts.headers.header2, '2');
   });
 
-  it('does not passthrough certain headers', function() {
+  it('does not passthrough blocked headers', function() {
     var req = {
       method: 'get',
       headers: {
@@ -117,7 +136,7 @@ describe('requestOptions', function() {
     };
 
     var opts = requestOptions(req, endpointOptions);
-    assert.deepEqual(opts.headers, _.pick(req.headers, 'if-none-match', 'header1'));
+    assert.isUndefined(opts.headers.cookie);
   });
 
   it('does not passthrough certain headers when response to be cached', function() {
@@ -137,13 +156,16 @@ describe('requestOptions', function() {
     };
 
     var opts = requestOptions(req, endpointOptions);
-    assert.deepEqual(opts.headers, _.pick(req.headers, 'header1'));
+    assert.isUndefined(opts.headers['if-none-match']);
+    assert.isUndefined(opts.headers['if-modified-since']);
+    assert.equal(opts.headers.header1, '1');
   });
 
-  it('X-Forwarded-For is included in headers', function() {
+  it('default headers appended', function() {
     var req = {
       method: 'get',
-      ip: '127.0.0.1'
+      ip: '127.0.0.1',
+      secure: true
     };
 
     var endpointOptions = {
@@ -152,7 +174,16 @@ describe('requestOptions', function() {
     };
 
     var opts = requestOptions(req, endpointOptions);
-    assert.equal(opts.headers['X-Forwarded-For'], req.ip);
+    assert.equal(opts.headers['x-forwarded-for'], req.ip);
+    assert.equal(opts.headers['accept-encoding'], 'gzip');
+    assert.equal(opts.headers['x-forwarded-proto'], 'https');
+    assert.equal(opts.headers['x-forwarded-port'], '443');
+
+    req.secure = false;
+    opts = requestOptions(req, endpointOptions);
+
+    assert.equal(opts.headers['x-forwarded-proto'], 'http');
+    assert.equal(opts.headers['x-forwarded-port'], '80');
   });
 
   it('cannot exceed limit options', function() {

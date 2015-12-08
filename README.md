@@ -17,7 +17,7 @@ var requestProxy = require('express-request-proxy');
 require('redis-streams')(redis);
 
 app.get('/api/:resource/:id', requestProxy({
-	cache: redis,
+	cache: redis.createClient(),
 	cacheMaxAge: 60,
 	url: "https://someapi.com/api/:resource/:id",
 	query: {
@@ -91,7 +91,7 @@ var usernamePassword = process.env.SOMEAPI_USERNAME + ":"
 	+ process.env.SOMEAPI_PASSSWORD;
 
 app.post("/api/:resource", requestProxy({
-	cache: redis,
+	cache: redis.createClient(),
 	cacheMaxAge: 60,
 	url: "https://someapi.com/api/:resource",
 	headers: {

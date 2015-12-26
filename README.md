@@ -199,7 +199,7 @@ module.exports = function(options) {
 };
 ~~~
 
-See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example. For transforming HTML responses, the [trumpet package](https://www.npmjs.com/package/trumpet), with it's streaming capabilities, is a natural fit.
+See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example. For transforming HTML responses, the [trumpet package](https://www.npmjs.com/package/trumpet), with its streaming capabilities, is a natural fit.
 
 Here's how you could request a GitHub README.md as html:
 

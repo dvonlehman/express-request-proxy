@@ -45,7 +45,7 @@ describe('response transforms', function() {
 
     supertest(this.server).get('/proxy')
       .expect(200)
-      .expect('Express-Api-Proxy-Cache', 'miss')
+      .expect('Express-Request-Proxy-Cache', 'miss')
       .expect(function(res) {
         assert.equal(res.text, '1234<<EOF>>');
       })
@@ -55,7 +55,7 @@ describe('response transforms', function() {
         supertest(self.server).get('/proxy')
           .expect(200)
           .expect('Content-Type', /^text\/html/)
-          .expect('Express-Api-Proxy-Cache', 'hit')
+          .expect('Express-Request-Proxy-Cache', 'hit')
           .expect('1234<<EOF>>')
           .end(done);
       });

@@ -1,6 +1,6 @@
 {
   "name": "express-request-proxy",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Intelligent http proxy Express middleware",
   "main": "index.js",
   "scripts": {

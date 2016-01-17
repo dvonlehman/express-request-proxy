@@ -4,7 +4,7 @@ var _ = require('lodash');
 var async = require('async');
 var memoryCache = require('memory-cache-stream');
 // var redis = require('redis');
-var debug = require('debug')('express-api-proxy');
+var debug = require('debug')('express-request-proxy');
 var proxy = require('..');
 var setup = require('./setup');
 var shortid = require('shortid');
@@ -26,7 +26,10 @@ describe('proxy cache', function() {
       cacheMaxAge: 100
     });
 
-    this.server.get('/proxy', proxy(this.proxyOptions));
+    this.server.get('/proxy', function(req, res, next) {
+      proxy(self.proxyOptions)(req, res, next);
+    });
+
     this.server.use(setup.errorHandler);
   });
 
@@ -35,7 +38,7 @@ describe('proxy cache', function() {
       .expect(200)
       .expect('Content-Type', /application\/json/)
       .expect('Cache-Control', 'max-age=' + this.proxyOptions.cacheMaxAge)
-      .expect('Express-Api-Proxy-Cache', 'miss')
+      .expect('Express-Request-Proxy-Cache', 'miss')
       .end(function(err, res) {
         if (err) return done(err);
 
@@ -47,6 +50,24 @@ describe('proxy cache', function() {
             cb();
           });
         }, done);
+      });
+  });
+
+  it('cache key includes the querystring args', function(done) {
+    this.proxyOptions.query = {
+      arg1: 'a',
+      arg2: 'b'
+    };
+
+    supertest(this.server).get('/proxy')
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+      .expect('Cache-Control', 'max-age=' + this.proxyOptions.cacheMaxAge)
+      .end(function(err, res) {
+        if (err) return done(err);
+
+        assert.isTrue(self.cache.exists(self.proxyOptions.url + '?arg1=a&arg2=b'));
+        done();
       });
   });
 
@@ -67,7 +88,7 @@ describe('proxy cache', function() {
       .expect(200)
       .expect('Content-Type', /^application\/json/)
       .expect('Cache-Control', /^max-age/)
-      .expect('Express-Api-Proxy-Cache', 'hit')
+      .expect('Express-Request-Proxy-Cache', 'hit')
       .expect(function(res) {
         assert.deepEqual(res.body, self.apiResponse);
       })
@@ -133,12 +154,12 @@ describe('proxy cache', function() {
 
     supertest(this.server).get('/proxy')
       .expect(200)
-      .expect('Express-Api-Proxy-Cache', 'miss')
+      .expect('Express-Request-Proxy-Cache', 'miss')
       .expect('Content-Type', /^some\/custom-type/)
       .expect(self.apiResponse)
       .end(function(err, res) {
         supertest(self.server).get('/proxy')
-          .expect('Express-Api-Proxy-Cache', 'hit')
+          .expect('Express-Request-Proxy-Cache', 'hit')
           .expect(200)
           .expect(self.apiResponse)
           .expect('Content-Type', /^some\/custom-type/)
@@ -154,7 +175,7 @@ describe('proxy cache', function() {
     supertest(this.server)
       .get('/proxy')
       .expect(404)
-      .expect('Express-Api-Proxy-Cache', 'miss')
+      .expect('Express-Request-Proxy-Cache', 'miss')
       .end(function(res) {
         self.cache.exists(self.baseApiUrl, function(err, exists) {
           assert.ok(!exists);
@@ -186,7 +207,7 @@ describe('proxy cache', function() {
       function(cb) {
         supertest(self.server).get('/proxy')
           .set('Accept-Encoding', 'gzip')
-          .expect('Express-Api-Proxy-Cache', 'miss')
+          .expect('Express-Request-Proxy-Cache', 'miss')
           .expect(function(res) {
             assert.deepEqual(res.body, self.apiResponse);
           })
@@ -204,7 +225,7 @@ describe('proxy cache', function() {
       function(cb) {
         supertest(self.server).get('/proxy')
           .set('Accept-Encoding', 'gzip')
-          .expect('Express-Api-Proxy-Cache', 'hit')
+          .expect('Express-Request-Proxy-Cache', 'hit')
           .expect(function(res) {
             assert.deepEqual(res.body, self.apiResponse);
           })

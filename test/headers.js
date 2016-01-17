@@ -40,7 +40,7 @@ describe('http headers', function() {
     supertest(this.server).get('/proxy')
       .expect(200)
       .expect(function(res) {
-        assert.equal(res.body.headers['user-agent'], 'express-api-proxy');
+        assert.equal(res.body.headers['user-agent'], 'express-request-proxy');
       })
       .end(done);
   });

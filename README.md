@@ -178,25 +178,31 @@ The proxy supports transforming the API response before piping it back to the ca
 Here's a trivial transform function that simply appends some text
 
 ~~~js
-module.exports = fn = function(options) {
-	return through2(function(chunk, enc, cb) {
-		this.push(chunk);
-		cb();
-	}, function(cb) {
-		this.push(options.appendText);
-		cb();
-	});
-};
+module.exports = function() {
+  return {
+    name: 'appender',
+    transform: function() {
+      return through2(function(chunk, enc, cb) {
+        this.push(chunk + appendText);
+        cb();
+      });
+    }
+  };
+}
 ~~~
 
 If the transform needs to change the `Content-Type` of the response, a `contentType` property can be declared on the transform function that the proxy will recognize and set the header accordingly.
 
 ~~~js
-module.exports = function(options) {
-	var transform = through2(...);
-	transform.contentType = 'application/json';
-	return transform;
-};
+module.exports = function() {
+  return {
+    name: 'appender',
+    contentType: 'application/json',
+    transform: function() {
+      return through2(...)
+    }
+  };
+}
 ~~~
 
 See the [markdown-transform](https://github.com/4front/markdown-transform) for a real world example. For transforming HTML responses, the [trumpet package](https://www.npmjs.com/package/trumpet), with it's streaming capabilities, is a natural fit.

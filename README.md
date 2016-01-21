@@ -178,12 +178,15 @@ The proxy supports transforming the API response before piping it back to the ca
 Here's a trivial transform function that simply appends some text
 
 ~~~js
-module.exports = function() {
+module.exports = function(options) {
   return {
     name: 'appender',
     transform: function() {
       return through2(function(chunk, enc, cb) {
-        this.push(chunk + appendText);
+        this.push(chunk);
+        cb();
+      }, function(cb) {
+        this.push(options.appendText);
         cb();
       });
     }

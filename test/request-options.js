@@ -85,7 +85,7 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       params: {
-        '0': 'path1/path2',
+        0: 'path1/path2',
         version: 'v1'
       }
     };
@@ -125,9 +125,9 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       headers: {
-        'cookie': 'should_not_passthrough',
+        cookie: 'should_not_passthrough',
         'if-none-match': '345345',
-        'header1': '1'
+        header1: '1'
       }
     };
 
@@ -143,10 +143,10 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       headers: {
-        'cookie': 'should_not_passthrough',
+        cookie: 'should_not_passthrough',
         'if-none-match': 'should_not_passthrough',
         'if-modified-since': 'should_not_passthrough',
-        'header1': '1'
+        header1: '1'
       }
     };
 
@@ -190,10 +190,10 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       headers: {
-        'cookie': 'should_not_passthrough',
+        cookie: 'should_not_passthrough',
         'if-none-match': 'should_not_passthrough',
         'if-modified-since': 'should_not_passthrough',
-        'header1': '1'
+        header1: '1'
       }
     };
 

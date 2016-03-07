@@ -177,13 +177,28 @@ describe('requestOptions', function() {
     assert.equal(opts.headers['x-forwarded-for'], req.ip);
     assert.equal(opts.headers['accept-encoding'], 'gzip');
     assert.equal(opts.headers['x-forwarded-proto'], 'https');
-    assert.equal(opts.headers['x-forwarded-port'], '443');
 
     req.secure = false;
     opts = requestOptions(req, endpointOptions);
 
     assert.equal(opts.headers['x-forwarded-proto'], 'http');
-    assert.equal(opts.headers['x-forwarded-port'], '80');
+  });
+
+  it('default headers appended host and port', function() {
+    var req = {
+      headers: {
+          host: 'localhost:8080'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      cache: {}
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.headers['x-forwarded-host'], 'localhost');
+    assert.equal(opts.headers['x-forwarded-port'], '8080');
   });
 
   it('cannot exceed limit options', function() {

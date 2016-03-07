@@ -6,7 +6,8 @@
   "scripts": {
     "test": "mocha --reporter spec --bail --check-leaks test/",
     "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --reporter dot --check-leaks test/",
-    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter spec --check-leaks test/"
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter spec --check-leaks test/",
+    "lint": "eslint --cache ./lib index.js"
   },
   "repository": {
     "type": "git",
@@ -43,7 +44,7 @@
   "devDependencies": {
     "compression": "^1.6.0",
     "dash-assert": "^1.0.2",
-    "eslint": "^1.9.0",
+    "eslint": "^2.3.0",
     "eslint-config-4front": "^1.0.1",
     "express": "^4.11.1",
     "istanbul": "^0.3.5",

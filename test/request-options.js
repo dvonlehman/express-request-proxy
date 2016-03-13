@@ -100,6 +100,24 @@ describe('requestOptions', function() {
     done();
   });
 
+  it('wildcard route with no params', function(done) {
+    var req = {
+      method: 'post',
+      params: {
+        0: 'v1/token'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://domain.com/api/auth/*'
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.deepEqual(opts.url, 'http://domain.com/api/auth/v1/token');
+
+    done();
+  });
+
   it('appends headers', function() {
     var req = {
       method: 'get',
@@ -187,7 +205,7 @@ describe('requestOptions', function() {
   it('default headers appended host and port', function() {
     var req = {
       headers: {
-          host: 'localhost:8080'
+        host: 'localhost:8080'
       }
     };
 

@@ -129,8 +129,8 @@ describe('proxy cache', function() {
 
     this.originHeaders = {
       'Last-Modified': new Date().toUTCString(),
-      'Expires': new Date().toUTCString(),
-      'Etag': '345345345345'
+      Expires: new Date().toUTCString(),
+      Etag: '345345345345'
     };
 
     this.proxyOptions.cacheMaxAge = 200;
@@ -186,7 +186,7 @@ describe('proxy cache', function() {
 
   it('does not send conditional get headers to origin', function(done) {
     this.originHeaders = {
-      'ETag': '2435345345',
+      ETag: '2435345345',
       'If-Modified-Since': (new Date()).toUTCString()
     };
 

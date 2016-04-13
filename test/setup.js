@@ -21,14 +21,14 @@ module.exports.beforeEach = function() {
   function maybeParseBody(req, res, next) {
     if (is.hasBody(req)) {
       switch (is(req, ['urlencoded', 'json'])) {
-      case 'urlencoded':
-        debug('parse api urlencoded body');
-        return bodyParser.urlencoded({extended: false})(req, res, next);
-      case 'json':
-        debug('parse api json body');
-        return bodyParser.json()(req, res, next);
-      default:
-        break;
+        case 'urlencoded':
+          debug('parse api urlencoded body');
+          return bodyParser.urlencoded({extended: false})(req, res, next);
+        case 'json':
+          debug('parse api json body');
+          return bodyParser.json()(req, res, next);
+        default:
+          break;
       }
     }
 
@@ -89,8 +89,7 @@ module.exports.errorHandler = function(err, req, res, next) {
   if (!err.status) err.status = 500;
 
   // if (err.status >= 500)
-  console.error(err.message);
-
+  process.stderr.write(err.message);
   res.status(err.status).send(err.message);
 };
 

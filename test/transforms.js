@@ -35,6 +35,17 @@ describe('response transforms', function() {
       .end(done);
   });
 
+  it('transforms headers', function(done) {
+    this.proxyOptions.transforms = [
+      headerTransform('text/html', 'http://localhost')
+    ];
+    supertest(this.server).get('/proxy')
+      .expect(200)
+      .expect('Content-Type', /^text\/html/)
+      .expect('location', 'http://localhost')
+      .end(done);
+  });
+
   it('recreates the transform stream between requests', function(done) {
     var self = this;
     supertest(self.server).get('/proxy')
@@ -101,13 +112,25 @@ describe('response transforms', function() {
   function appenderTransform(appendText, contentType) {
     return {
       name: 'appender',
-      contentType: contentType,
-      transform: function() {
-        return through2(function(chunk, enc, cb) {
+      headers: {
+        'Content-Type': contentType
+      },
+      transform: function () {
+        return through2(function (chunk, enc, cb) {
           this.push(chunk + appendText);
           cb();
         });
       }
     };
+  }
+
+  function headerTransform(contentType, location) {
+    return {
+      name: 'overwrite-headers',
+      headers: {
+        'Content-Type': contentType,
+        'location': location
+      }
+    }
   }
 });

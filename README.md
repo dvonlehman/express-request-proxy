@@ -82,6 +82,9 @@ __`cacheHttpHeader`__
 
 Name of the http header returned in the proxy response with the value `"hit"` or `"miss"`. Defaults to `"Express-Request-Proxy-Cache"`.
 
+__`timeout`__
+
+The number of milliseconds to wait for a server to send response headers before aborting the request. See [request/request](https://github.com/request/request#user-content-requestoptions-callback) for more information. Default value `5000`.
 
 #### HTTP Basic Auth
 For http endpoints protected by [HTTP Basic authentication](http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side), a username and password should be sent in the form `username:password`  which is then base64 encoded.

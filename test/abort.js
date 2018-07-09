@@ -14,10 +14,10 @@ describe('request abortion', function() {
   beforeEach(function() {
     this.remoteApi.get('/longRoute', function(req, res) {
       var closedBeforeSend = false;
-      req.on('close', () => {
+      req.on('close', function() {
         closedBeforeSend = true;
       })
-      setTimeout(() => {
+      setTimeout(function() {
         fullyExecuted = !closedBeforeSend;
         res.send({status: true});
       }, remoteRequestDelay);

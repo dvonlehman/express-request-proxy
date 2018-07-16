@@ -1,7 +1,6 @@
 language: node_js
 node_js:
-  - "0.12"
-matrix:
+  - "4.x":
   allow_failures:
   fast_finish: true
 script: "npm run test-travis && npm run lint"

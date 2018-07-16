@@ -5,23 +5,27 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha --reporter spec --bail --check-leaks test/",
-    "test-cov":
-      "istanbul cover node_modules/mocha/bin/_mocha -- --reporter dot --check-leaks test/",
-    "test-travis":
-      "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter spec --check-leaks test/",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --reporter dot --check-leaks test/",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter spec --check-leaks test/",
     "lint": "eslint --cache ./lib index.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/4front/express-request-proxy"
+    "url": "https://github.com/dvonlehman/express-request-proxy"
   },
-  "keywords": ["4front", "express", "middleware", "request", "api", "proxy"],
+  "keywords": [
+    "express",
+    "middleware",
+    "request",
+    "api",
+    "proxy"
+  ],
   "author": "David Von Lehman (https://github.com/dvonlehman)",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/4front/express-request-proxy/issues"
+    "url": "https://github.com/dvonlehman/express-request-proxy/issues"
   },
-  "homepage": "https://github.com/4front/express-request-proxy",
+  "homepage": "https://github.com/dvonlehman/express-request-proxy",
   "dependencies": {
     "async": "^2.6.1",
     "body-parser": "^1.18.3",
@@ -39,8 +43,7 @@
   "devDependencies": {
     "compression": "^1.7.2",
     "dash-assert": "^1.3.1",
-    "eslint": "^4.19.1",
-    "eslint-config-4front": "^1.3.2",
+    "eslint": "^5.1.0",
     "express": "^4.16.3",
     "istanbul": "^0.4.5",
     "memory-cache-stream": "^1.2.0",

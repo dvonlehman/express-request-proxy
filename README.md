@@ -260,7 +260,7 @@ Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/
 [npm-url]: https://npmjs.org/package/express-request-proxy
 [travis-image]: https://img.shields.io/travis/dvonlehman/express-request-proxy.svg?style=flat
 [travis-url]: https://travis-ci.org/dvonlehman/express-request-proxy
-[coveralls-image]: https://img.shields.io/coveralls/4front/express-request-proxy.svg?style=flat
+[coveralls-image]: https://img.shields.io/coveralls/dvonlehman/express-request-proxy.svg?style=flat
 [coveralls-url]: https://coveralls.io/r/dvonlehman/express-request-proxy?branch=master
 [downloads-image]: https://img.shields.io/npm/dm/express-request-proxy.svg?style=flat
 [downloads-url]: https://npmjs.org/package/express-request-proxy

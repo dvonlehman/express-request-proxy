@@ -4,3 +4,4 @@ coverage
 *.log
 .eslintcache
 .vscode
+.coveralls.yml

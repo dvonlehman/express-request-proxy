@@ -43,7 +43,7 @@
   "devDependencies": {
     "compression": "^1.7.2",
     "dash-assert": "^1.3.1",
-    "eslint": "^5.1.0",
+    "eslint": "^4.19.1",
     "express": "^4.16.3",
     "istanbul": "^0.4.5",
     "memory-cache-stream": "^1.2.0",

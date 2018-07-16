@@ -1,11 +1,13 @@
 var supertest = require('supertest');
 var request = require('request');
+var assert = require('assert');
 var proxy = require('..');
 var setup = require('./setup');
 
 describe('request abortion', function() {
   var self;
   var fullyExecuted = false;
+  var postCount = 0;
   var remoteRequestDelay = 50;
 
   beforeEach(setup.beforeEach);
@@ -22,8 +24,16 @@ describe('request abortion', function() {
         res.send({status: true});
       }, remoteRequestDelay);
     });
+    this.remoteApi.post('/postCounter', function(req, res) {
+      postCount++;
+      res.send({status: true});
+    });
     this.server.get('/proxyLongRoute', proxy({
       url: 'http://localhost:' + this.apiPort + '/longRoute',
+      cache: false
+    }));
+    this.server.post('/proxyPostCounter', proxy({
+      url: 'http://localhost:' + this.apiPort + '/postCounter',
       cache: false
     }));
   });
@@ -53,5 +63,20 @@ describe('request abortion', function() {
         done(new Error('Request has not been closed.'));
       }, remoteRequestDelay + 10);
     });
+  });
+
+  it('should call the remote api request only once when request has a body', function(done) {
+    postCount = 0;
+    supertest(this.server)
+      .post('/proxyPostCounter')
+      .set('Content-Type', 'application/json')
+      .send({sample: 'content'})
+      .expect(200)
+      .end(function(err, res) {
+        setTimeout(() => {
+          assert.equal(postCount, 1);
+          done();
+        }, 50);
+      });
   });
 });

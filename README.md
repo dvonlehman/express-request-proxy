@@ -117,15 +117,15 @@ app.post(
 Sometimes it's necessary to pass attributes of the current logged in user (on the server) into the request to the remote endpoint as headers, query params, etc. Rather than passing environment variables, simply specify the desired user properties.
 
 ```js
-app.all(
-  "/api/protected/:resource",
-  requestProxy({
+app.all("/api/protected/:resource", function(req, res, next) {
+  var proxy = requestProxy({
     url: "http://remoteapi.com/api",
     query: {
       access_token: req.user.accessToken
     }
-  })
-);
+  });
+  proxy(req, res, next);
+});
 ```
 
 This assumes that prior middleware has set the `req.user` property, which was perhaps stored in [session state](https://www.npmjs.com/package/express-session).

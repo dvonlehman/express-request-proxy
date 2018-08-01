@@ -29,13 +29,13 @@ describe('timeout', function() {
       .end(done);
   });
 
-  it('api timeout returns 408', function(done) {
+  it('api timeout returns 504', function(done) {
     this.apiLatency = 50;
     this.proxyOptions.timeout = 20;
 
     supertest(this.server)
       .get('/proxy')
-      .expect(408, done);
+      .expect(504, done);
   });
 
   it('api returns 408 when instructed to cache', function(done) {

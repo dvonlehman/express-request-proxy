@@ -3,3 +3,5 @@ coverage
 .DS_Store
 *.log
 .eslintcache
+.vscode
+.coveralls.yml

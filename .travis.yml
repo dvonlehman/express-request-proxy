@@ -1,8 +1,12 @@
 language: node_js
 node_js:
-  - "0.12"
+  - "4"
 matrix:
   allow_failures:
   fast_finish: true
 script: "npm run test-travis && npm run lint"
-after_script: "npm install coveralls@2.10.0 && cat ./coverage/lcov.info | coveralls"
+after_script:
+  - echo "Generating .coverall.yml"
+  - echo "repo_token: ${COVERALLS_REPO_TOKEN}" > .coveralls.yml
+  - echo "Submitting code coverage to coveralls"
+  - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls

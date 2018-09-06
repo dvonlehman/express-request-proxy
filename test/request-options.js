@@ -85,7 +85,7 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       params: {
-        '0': 'path1/path2',
+        0: 'path1/path2',
         version: 'v1'
       }
     };
@@ -96,6 +96,24 @@ describe('requestOptions', function() {
 
     var opts = requestOptions(req, endpointOptions);
     assert.deepEqual(opts.url, 'http://someapi.com/v1/path1/path2');
+
+    done();
+  });
+
+  it('wildcard route with no params', function(done) {
+    var req = {
+      method: 'post',
+      params: {
+        0: 'v1/token'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://domain.com/api/auth/*'
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.deepEqual(opts.url, 'http://domain.com/api/auth/v1/token');
 
     done();
   });
@@ -125,9 +143,9 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       headers: {
-        'cookie': 'should_not_passthrough',
+        cookie: 'should_not_passthrough',
         'if-none-match': '345345',
-        'header1': '1'
+        header1: '1'
       }
     };
 
@@ -143,10 +161,10 @@ describe('requestOptions', function() {
     var req = {
       method: 'get',
       headers: {
-        'cookie': 'should_not_passthrough',
+        cookie: 'should_not_passthrough',
         'if-none-match': 'should_not_passthrough',
         'if-modified-since': 'should_not_passthrough',
-        'header1': '1'
+        header1: '1'
       }
     };
 
@@ -177,23 +195,38 @@ describe('requestOptions', function() {
     assert.equal(opts.headers['x-forwarded-for'], req.ip);
     assert.equal(opts.headers['accept-encoding'], 'gzip');
     assert.equal(opts.headers['x-forwarded-proto'], 'https');
-    assert.equal(opts.headers['x-forwarded-port'], '443');
 
     req.secure = false;
     opts = requestOptions(req, endpointOptions);
 
     assert.equal(opts.headers['x-forwarded-proto'], 'http');
-    assert.equal(opts.headers['x-forwarded-port'], '80');
+  });
+
+  it('default headers appended host and port', function() {
+    var req = {
+      headers: {
+        host: 'localhost:8080'
+      }
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      cache: {}
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.headers['x-forwarded-host'], 'localhost');
+    assert.equal(opts.headers['x-forwarded-port'], '8080');
   });
 
   it('cannot exceed limit options', function() {
     var req = {
       method: 'get',
       headers: {
-        'cookie': 'should_not_passthrough',
+        cookie: 'should_not_passthrough',
         'if-none-match': 'should_not_passthrough',
         'if-modified-since': 'should_not_passthrough',
-        'header1': '1'
+        header1: '1'
       }
     };
 
@@ -238,5 +271,24 @@ describe('requestOptions', function() {
 
     var opts = requestOptions(req, endpointOptions);
     assert.equal(opts.method, endpointOptions.method);
+  });
+
+  it('allows followRedirect from the options', function() {
+    var req = {
+      followRedirect: undefined,
+      method: 'get'
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      followRedirect: true
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.followRedirect, endpointOptions.followRedirect);
+
+    endpointOptions.followRedirect = false;
+    opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.followRedirect, endpointOptions.followRedirect);
   });
 });

@@ -106,7 +106,7 @@ app.post(
     cacheMaxAge: 60,
     url: "https://someapi.com/api/:resource",
     headers: {
-      Authorization: "Basic " + new Buffer(usernamePassword).toString("base64")
+      Authorization: "Basic " + Buffer.from(usernamePassword).toString("base64")
     }
   })
 );

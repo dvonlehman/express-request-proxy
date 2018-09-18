@@ -18,7 +18,7 @@ describe('request abortion', function() {
       var closedBeforeSend = false;
       req.on('close', function() {
         closedBeforeSend = true;
-      })
+      });
       setTimeout(function() {
         fullyExecuted = !closedBeforeSend;
         res.send({status: true});

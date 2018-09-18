@@ -67,6 +67,11 @@ An object of parameters to be appended to the querystring of the specified `url`
 
 An object of HTTP headers to be appended to the request to the remote url. This is also a good way to inject sensitive keys stored in environment variables. See the [http basic auth](#http-basic-auth) section for example usage.
 
+**`discardApiResponseHeaders`**
+
+An array with headers names which shouldn't passthrough to response.
+Default value: `['set-cookie', 'content-length']`.
+
 **`cache`**
 
 Cache object that conforms to the [node_redis](https://www.npmjs.com/package/redis) API. Can set to `false` at an endpoint level to explicitly disable caching for certain APIs. See [Cache section](#caching) below for more details.

@@ -25,6 +25,9 @@
   "bugs": {
     "url": "https://github.com/dvonlehman/express-request-proxy/issues"
   },
+  "engines": {
+    "node": ">= 4"
+  },
   "homepage": "https://github.com/dvonlehman/express-request-proxy",
   "dependencies": {
     "async": "^2.6.1",

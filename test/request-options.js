@@ -272,4 +272,23 @@ describe('requestOptions', function() {
     var opts = requestOptions(req, endpointOptions);
     assert.equal(opts.method, endpointOptions.method);
   });
+
+  it('allows followRedirect from the options', function() {
+    var req = {
+      followRedirect: undefined,
+      method: 'get'
+    };
+
+    var endpointOptions = {
+      url: 'http://someapi.com',
+      followRedirect: true
+    };
+
+    var opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.followRedirect, endpointOptions.followRedirect);
+
+    endpointOptions.followRedirect = false;
+    opts = requestOptions(req, endpointOptions);
+    assert.equal(opts.followRedirect, endpointOptions.followRedirect);
+  });
 });

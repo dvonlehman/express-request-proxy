@@ -221,15 +221,17 @@ module.exports = function(options) {
 };
 ```
 
-If the transform needs to change the `Content-Type` of the response, a `contentType` property can be declared on the transform function that the proxy will recognize and set the header accordingly.
+If the transform needs to change the headers of the response, a `headers` object can be declared on the transform function that the proxy will recognize and overwrite each header accordingly.
+
+If you wish to only overwrite headers, you can omit the transform function.
 
 ```js
 module.exports = function() {
   return {
-    name: 'appender',
-    contentType: 'application/json',
-    transform: function() {
-      return through2(...)
+    name: 'header-overwrite',
+    headers: {
+      'content-type': 'application/json',
+      'location': 'http://localhost'
     }
   };
 }

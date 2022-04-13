@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/dvonlehman/express-request-proxy",
   "dependencies": {
-    "async": "^2.6.1",
+    "async": "^3.2.2",
     "body-parser": "^1.18.3",
     "camel-case": "^3.0.0",
     "debug": "^3.1.0",
